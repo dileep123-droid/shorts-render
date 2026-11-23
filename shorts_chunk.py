@@ -37,6 +37,11 @@ def put_json(obj, key): S3.put_object(Bucket=BUCKET, Key=key, Body=json.dumps(ob
 def mins(a, b=None): return round(((b or time.time()) - a) / 60, 2)
 
 if CMD == "plan":
+    if JOB.get("final"):   # production: refuse at once (before ~19 runners start) if this Short is already in out/ - never overwrite
+        assert PREFIX == "gh_prod" and JOB["final"]["video"] == f"s2work/shorts1/out/sh_{NAME}.mp4", "final key must be this Short's own"
+        for k in JOB["final"].values():
+            try: S3.head_object(Bucket=BUCKET, Key=k); print("REFUSED: this Short is already in out/", flush=True); sys.exit(3)
+            except S3.exceptions.ClientError: pass
     get(JOB["files"]["voice.flac"], f"{IN}/voice.flac"); get(JOB["files"]["face.mp4"], f"{IN}/face.mp4")
     sh(f"ffmpeg -y -loglevel error -i {IN}/voice.flac -af apad=pad_dur=0.2 -ar 48000 -ac 2 {T}/voice.wav"); D = dur(f"{T}/voice.wav")
     sh(f"ffmpeg -y -loglevel error -i {T}/voice.wav -ar 16000 -ac 1 {T}/v16.wav")
