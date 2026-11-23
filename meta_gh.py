@@ -1,0 +1,104 @@
+# Owner 23 Nov: Meta AI clips made on GitHub, while Meta sees the owner's laptop internet (tunnel test).
+# Runs on a GitHub runner:
+#   1. a local SOCKS5 proxy (127.0.0.1:1080) turns every Chrome connection into a WebSocket through the owner's
+#      Cloudflare quick tunnel -> laptop_bridge.py -> the real Meta site, from the laptop's home connection
+#   2. Chromium (Playwright) with the owner's saved Meta session sends the prompts, waits, reads the video links
+#   3. the videos are downloaded DIRECTLY (no tunnel) and stored in R2
+# Everything private (tunnel address, session, prompts, chat and video links) lives only in the private R2 bucket.
+# The public log prints only counts and states.   python meta_gh.py <R2 job key>
+import asyncio, json, os, sys, threading, time, urllib.request
+import boto3, websockets
+from botocore.config import Config
+S3 = boto3.client("s3", endpoint_url=os.environ["CF_R2_ENDPOINT"], aws_access_key_id=os.environ["CF_R2_ACCESS_KEY_ID"],
+                  aws_secret_access_key=os.environ["CF_R2_SECRET_ACCESS_KEY"], region_name="auto", config=Config(signature_version="s3v4"))
+B = "eduorbex-media"
+def r2json(k): return json.loads(S3.get_object(Bucket=B, Key=k)["Body"].read())
+EP = r2json("s2work/meta_tunnel/endpoint.json")            # {"url": "wss://...trycloudflare.com/<secret>"}
+JOB = r2json(sys.argv[1])                                   # {"out": "<r2 prefix>/", "items": [{"id","prompt"}], "wait_min": 15}
+STATE = "/tmp/meta_state.json"; open(STATE, "wb").write(S3.get_object(Bucket=B, Key="s2work/meta_tunnel/session.json")["Body"].read())
+stats = {"conn": 0, "fail": 0}
+
+# ---------- 1) SOCKS5 -> WebSocket tunnel ----------
+async def pipe_client(reader, writer):
+    try:
+        v, n = await reader.readexactly(2); await reader.readexactly(n); writer.write(b"\x05\x00"); await writer.drain()
+        h = await reader.readexactly(4); at = h[3]
+        if at == 3: host = (await reader.readexactly((await reader.readexactly(1))[0])).decode()
+        elif at == 1: host = ".".join(map(str, await reader.readexactly(4)))
+        else: await reader.readexactly(16); host = "ipv6"
+        port = int.from_bytes(await reader.readexactly(2), "big")
+        ws = await websockets.connect(EP["url"], max_size=None, open_timeout=30, ping_interval=20)
+        await ws.send(f"{host}:{port}"); ok = await ws.recv()
+        if ok != "OK":
+            stats["fail"] += 1; writer.write(b"\x05\x02\x00\x01" + bytes(6)); await writer.drain(); writer.close(); await ws.close(); return
+        stats["conn"] += 1; writer.write(b"\x05\x00\x00\x01" + bytes(6)); await writer.drain()
+        async def up():
+            while True:
+                d = await reader.read(65536)
+                if not d: break
+                await ws.send(d)
+            await ws.close()
+        async def down():
+            async for m in ws:
+                writer.write(m if isinstance(m, bytes) else m.encode()); await writer.drain()
+            writer.close()
+        await asyncio.gather(up(), down(), return_exceptions=True)
+    except Exception:
+        stats["fail"] += 1
+        try: writer.close()
+        except Exception: pass
+def socks_thread():
+    loop = asyncio.new_event_loop(); asyncio.set_event_loop(loop)
+    loop.run_until_complete(asyncio.start_server(pipe_client, "127.0.0.1", 1080)); loop.run_forever()
+threading.Thread(target=socks_thread, daemon=True).start(); time.sleep(1)
+
+# ---------- 2) Chromium on meta.ai through the tunnel ----------
+from playwright.sync_api import sync_playwright
+res = {"t0": time.strftime("%H:%M:%S"), "items": {}}
+def save_res(): S3.put_object(Bucket=B, Key=JOB["out"] + "result.json", Body=json.dumps(res, indent=1).encode())
+def shot(pg, name):
+    try: S3.put_object(Bucket=B, Key=JOB["out"] + f"debug_{name}.png", Body=pg.screenshot())
+    except Exception: pass
+with sync_playwright() as p:
+    br = p.chromium.launch(headless=True, proxy={"server": "socks5://127.0.0.1:1080"}, args=["--disable-blink-features=AutomationControlled"])
+    ctx = br.new_context(storage_state=STATE, viewport={"width": 1280, "height": 900}, locale="en-IN", timezone_id="Asia/Kolkata",
+                         user_agent=JOB.get("ua") or None)
+    ctx.route("**/*.{mp4,webm,m4s,woff,woff2,ttf}", lambda r: r.abort())   # never pull video through the tunnel
+    chats = {}
+    for it in JOB["items"]:                                # send every prompt (like meta_send.py send)
+        pg = ctx.new_page(); pg.set_default_timeout(90000); st = "?"
+        try:
+            pg.goto("https://www.meta.ai/", wait_until="domcontentloaded", timeout=120000)
+            ed = pg.locator("[data-lexical-editor], [contenteditable='true']").first
+            try: ed.wait_for(state="visible", timeout=45000)
+            except Exception: st = "NO PROMPT BOX (logged out / blocked?)"; shot(pg, it["id"] + "_nobox"); raise
+            time.sleep(1.5); ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(1); pg.keyboard.press("Enter")
+            for _ in range(40):
+                time.sleep(1)
+                if pg.url.rstrip("/") != "https://www.meta.ai": chats[it["id"]] = pg.url; break
+            st = "SENT" if it["id"] in chats else "NOT SENT"
+            if st != "SENT": shot(pg, it["id"] + "_notsent")
+        except Exception as e:
+            if st == "?": st = "ERROR " + type(e).__name__
+        res["items"][it["id"]] = {"send": st}; print(it["id"], st, flush=True); save_res()
+        pg.close()
+    deadline = time.time() + 60 * JOB.get("wait_min", 15); left = dict(chats)
+    while left and time.time() < deadline:                 # collect: reopen each chat, read the video link only
+        time.sleep(60)
+        for iid, url in list(left.items()):
+            pg = ctx.new_page()
+            try:
+                pg.goto(url, wait_until="domcontentloaded", timeout=120000); v = []
+                for _ in range(15):
+                    time.sleep(1)
+                    v = pg.evaluate("()=>[...document.querySelectorAll('main video')].map(e=>e.currentSrc||e.src||(e.querySelector('source')||{}).src).filter(x=>x && /fbcdn|scontent/.test(x))")
+                    if v: break
+                if v:   # 3) direct download (no tunnel) -> R2
+                    data = urllib.request.urlopen(urllib.request.Request(v[0], headers={"User-Agent": "Mozilla/5.0"}), timeout=120).read()
+                    S3.put_object(Bucket=B, Key=JOB["out"] + f"{iid}_1.mp4", Body=data, ContentType="video/mp4")
+                    res["items"][iid]["video"] = len(data); left.pop(iid); print(iid, "VIDEO", len(data) // 1000, "KB", flush=True); save_res()
+            except Exception as e: print(iid, "collect retry", type(e).__name__, flush=True)
+            finally: pg.close()
+    for iid in left: res["items"][iid]["video"] = "NOT READY in time"
+    res["tunnel"] = dict(stats); res["t1"] = time.strftime("%H:%M:%S"); save_res(); br.close()
+print("tunnel connections", stats, "| videos", sum(1 for x in res["items"].values() if isinstance(x.get("video"), int)), "of", len(JOB["items"]))
