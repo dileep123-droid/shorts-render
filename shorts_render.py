@@ -13,7 +13,20 @@ from botocore.config import Config
 S3 = boto3.client("s3", endpoint_url=os.environ["CF_R2_ENDPOINT"], aws_access_key_id=os.environ["CF_R2_ACCESS_KEY_ID"],
                   aws_secret_access_key=os.environ["CF_R2_SECRET_ACCESS_KEY"], region_name="auto", config=Config(signature_version="s3v4"))
 JOB = json.loads(S3.get_object(Bucket=BUCKET, Key=f"s2work/shorts1/{PREFIX}/jobs/{NAME}.json")["Body"].read())
-OUT = JOB["out"]; assert OUT.startswith(f"s2work/shorts1/{PREFIX}/"), "test runs never write outside the test prefix"
+OUT = JOB["out"]; assert OUT.startswith(f"s2work/shorts1/{PREFIX}/"), "work files never go outside the gh_ prefix"
+# production (prefix gh_prod, owner 23 Nov): ONLY the two finished videos go where Kaggle renders land, out/sh_<name>.mp4 + _720.mp4.
+# Guard: the keys must be exactly this Short's own keys and must not exist yet (a GitHub run never overwrites any Short).
+FINAL = JOB.get("final")
+def r2_has(k):
+    try: S3.head_object(Bucket=BUCKET, Key=k); return True
+    except Exception: return False
+if FINAL:
+    assert PREFIX == "gh_prod" and JOB["tag"] == "sh_" + NAME, "production job must be this Short's own"
+    assert FINAL == {"video": f"s2work/shorts1/out/sh_{NAME}.mp4", "preview": f"s2work/shorts1/out/sh_{NAME}_720.mp4"}, "final keys must be this Short's own out/ keys"
+    assert not JOB.get("ref"), "no compare in production"
+    if any(r2_has(k) for k in FINAL.values()): print("REFUSED: this Short is already in out/ - nothing is overwritten", flush=True); sys.exit(3)
+else:
+    assert PREFIX != "gh_prod", "gh_prod jobs must name their final keys"
 ROOT = "/tmp/sr"; IN = f"{ROOT}/in"; T = f"{ROOT}/w"; W = f"{ROOT}/out"; LS = f"{ROOT}/ls"
 for d in (IN, T, W): os.makedirs(d, exist_ok=True)
 T0 = time.time(); random.seed(7)
@@ -138,6 +151,10 @@ else:
     # ---------- split design: alignment + face circles were made on a Kaggle GPU (gh_lipsync_kernel.py) -> fetch them ----------
     stage("fetch_face")
     src = JOB.get("face_from", OUT + "face/")
+    if FINAL:   # production: never ship a Short with a face circle missing (a failed chunk) -> the laptop falls back to Kaggle
+        jn = json.loads(S3.get_object(Bucket=BUCKET, Key=OUT + "join.json")["Body"].read())
+        bad = [w["n"] for w in jn["windows"] if not w.get("complete")]
+        if bad or not jn["windows"]: print("REFUSED: face windows incomplete", bad, flush=True); sys.exit(4)
     S3.download_file(BUCKET, src + "align.json", f"{T}/align.json")
     al = json.load(open(f"{T}/align.json")); words, lines_t, FW = al["words"], al["lines_t"], [tuple(x) for x in al["FW"]]
     for n, a, b in FW:
@@ -266,12 +283,19 @@ sh(f"ffmpeg -y -loglevel error {ins} -filter_complex_script {T}/final2.txt -map 
 print("final", dur(out), os.path.getsize(out) if os.path.exists(out) else 0, flush=True)
 
 stage("upload_preview")
-put(out, os.path.basename(out), "video/mp4")
+assert os.path.exists(out) and dur(out) > 5, "final video missing"
 fz = subprocess.run(f"ffmpeg -hide_banner -i {out} -map 0:v -vf freezedetect=n=0.002:d=0.5 -f null - 2>&1 | grep -c freeze_start", shell=True, capture_output=True, text=True).stdout.strip()
 print("freeze scan:", fz, "frozen moments", flush=True)
 pv = f"{W}/{JOB['tag']}_720.mp4"
 sh(f"ffmpeg -y -loglevel error -i {out} -vf scale=720:1280 -c:v libx264 -preset veryfast -crf 25 -c:a aac -b:a 128k -movflags +faststart {pv}")
-put(pv, os.path.basename(pv), "video/mp4")
+assert os.path.exists(pv) and dur(pv) > 5, "preview missing"
+if FINAL:
+    if any(r2_has(k) for k in FINAL.values()): print("REFUSED: this Short appeared in out/ meanwhile (Kaggle?) - not overwritten", flush=True); sys.exit(3)
+    S3.upload_file(out, BUCKET, FINAL["video"], ExtraArgs={"ContentType": "video/mp4"})
+    S3.upload_file(pv, BUCKET, FINAL["preview"], ExtraArgs={"ContentType": "video/mp4"})
+    print("FINAL uploaded to out/", os.path.basename(FINAL["video"]), flush=True)
+else:
+    put(out, os.path.basename(out), "video/mp4"); put(pv, os.path.basename(pv), "video/mp4")
 put_json({"lines": lines_t, "face": FW, "ok": ok, "freezes": fz, "shots": [[round(s["t0"], 2), round(s["L"], 2), os.path.basename(s["src"])] for s in shots]}, "timing.json")
 
 # ---------- 6) check against the Kaggle render (job.ref, read-only): probe, SSIM over the whole video, frames side by side ----------
