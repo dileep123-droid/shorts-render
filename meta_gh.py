@@ -63,7 +63,7 @@ def shot(pg, name):
     try: S3.put_object(Bucket=B, Key=RES.rsplit("/", 1)[0] + f"/debug_{name}.png", Body=pg.screenshot())
     except Exception: pass
 with sync_playwright() as p:
-    br = p.chromium.launch(headless=True, proxy={"server": "socks5://127.0.0.1:1080", "bypass": "*.fbcdn.net,fbcdn.net,*.cdninstagram.com"}, args=["--disable-blink-features=AutomationControlled"])
+    br = p.chromium.launch(headless=True, proxy={"server": "socks5://127.0.0.1:1080", "bypass": "*.fbcdn.net,fbcdn.net,*.fbsbx.com,*.cdninstagram.com"}, args=["--disable-blink-features=AutomationControlled"])
     ctx = br.new_context(storage_state=STATE, viewport={"width": 1280, "height": 900}, locale="en-IN", timezone_id="Asia/Kolkata",
                          user_agent=JOB.get("ua") or None)
     ctx.route("**/*.{mp4,webm,m4s,woff,woff2,ttf}", lambda r: r.abort())   # never pull video through the tunnel
@@ -99,36 +99,52 @@ with sync_playwright() as p:
             pg.close()
         except Exception as e: print("char", c, "failed", type(e).__name__, flush=True)
     print("character pictures ready:", len(REFF), "of", len(JOB.get("refs") or {}), flush=True)
-    for it in JOB["items"]:                                # send every prompt (like meta_send.py send)
-        if in_r2(it["id"]): res["items"][it["id"]] = {"send": "ALREADY IN R2", "video": "kept"}; continue
-        pg = ctx.new_page(); pg.set_default_timeout(90000); st = "?"
+    # 23 Nov: ONE tab for all sends - "New chat" inside the page instead of reloading meta.ai each time (the page code is the big
+    # data that goes through the laptop); slow loads get 90 s and a second try
+    main = ctx.new_page(); main.set_default_timeout(90000)
+    def fresh():
         try:
-            pg.goto("https://www.meta.ai/", wait_until="domcontentloaded", timeout=120000)
-            ed = pg.locator("[data-lexical-editor], [contenteditable='true']").first
-            try: ed.wait_for(state="visible", timeout=45000)
-            except Exception: st = "NO PROMPT BOX (logged out / blocked?)"; shot(pg, it["id"] + "_nobox"); raise
-            time.sleep(1.5)
-            fl = [REFF[c] for c in it.get("chars", []) if c in REFF]
-            if fl: pg.locator("input[type=file]").first.set_input_files(fl); time.sleep(6 + 6 * len(fl))
-            ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(1); pg.keyboard.press("Enter")
-            for _ in range(40):
-                time.sleep(1)
-                if pg.url.rstrip("/") != "https://www.meta.ai": chats[it["id"]] = pg.url; break
-            st = "SENT" if it["id"] in chats else "NOT SENT"
-            if st != "SENT":
-                shot(pg, it["id"] + "_notsent")
-                body = pg.evaluate("()=>(document.querySelector('main')||document.body).innerText.slice(-300)").lower()
-                if any(k in body for k in ["limit", "try again later", "log in", "suspicious", "confirm"]): st = "NOT SENT (limit/login/check)"
-        except Exception as e:
-            if st == "?": st = "ERROR " + type(e).__name__
-        res["items"][it["id"]] = {"send": st, "chat": chats.get(it["id"], "")}; print(it["id"], st.split(" (")[0], flush=True); save_res()
-        if st.startswith("NOT SENT (limit"): print("STOPPING: Meta limit/login/check page", flush=True); break
-        pg.close()
+            if main.url.startswith("https://www.meta.ai"):
+                main.get_by_text("New chat", exact=True).first.click(timeout=8000)
+                main.wait_for_url(lambda u: u.rstrip("/") == "https://www.meta.ai", timeout=15000)
+            else: raise Exception("first load")
+        except Exception: main.goto("https://www.meta.ai/", wait_until="domcontentloaded", timeout=120000)
+        ed = main.locator("[data-lexical-editor], [contenteditable='true']").first; ed.wait_for(state="visible", timeout=90000); return ed
+    def send_one(it):
+        ed = fresh(); time.sleep(1.5)
+        fl = [REFF[c] for c in it.get("chars", []) if c in REFF]
+        if fl: main.locator("input[type=file]").first.set_input_files(fl); time.sleep(6 + 6 * len(fl))
+        ed.click(); main.keyboard.insert_text(it["prompt"]); time.sleep(1); main.keyboard.press("Enter")
+        for _ in range(40):
+            time.sleep(1)
+            if main.url.rstrip("/") != "https://www.meta.ai": return main.url
+        return None
+    todo = [it for it in JOB["items"] if not in_r2(it["id"])]
+    for it in JOB["items"]:
+        if it not in todo: res["items"][it["id"]] = {"send": "ALREADY IN R2", "video": "kept"}
+    stop = False
+    for attempt in (1, 2):
+        again = []
+        for it in todo:
+            st = "?"
+            try:
+                url = send_one(it)
+                if url: chats[it["id"]] = url; st = "SENT"
+                else:
+                    st = "NOT SENT"; shot(main, it["id"] + "_notsent")
+                    body = main.evaluate("()=>(document.querySelector('main')||document.body).innerText.slice(-300)").lower()
+                    if any(k in body for k in ["limit", "try again later", "log in", "suspicious", "confirm"]): st = "NOT SENT (limit/login/check)"
+            except Exception as e:
+                st = "NO PROMPT BOX / " + type(e).__name__; shot(main, it["id"] + "_nobox"); again.append(it)
+            res["items"][it["id"]] = {"send": st, "chat": chats.get(it["id"], "")}; print(it["id"], st.split(" (")[0].split(" /")[0], flush=True); save_res()
+            if st.startswith("NOT SENT (limit"): print("STOPPING: Meta limit/login/check page", flush=True); stop = True; break
+        if stop or not again: break
+        todo = again; print("second try for", len(again), flush=True)
     deadline = time.time() + 60 * JOB.get("wait_min", 15); left = dict(chats)
     while left and time.time() < deadline:                 # collect: reopen each chat, read the video link only
         time.sleep(60)
         for iid, url in list(left.items()):
-            pg = ctx.new_page()
+            pg = main
             try:
                 pg.goto(url, wait_until="domcontentloaded", timeout=120000); v = []
                 for _ in range(15):
@@ -140,7 +156,6 @@ with sync_playwright() as p:
                     S3.put_object(Bucket=B, Key=JOB["out"] + f"{iid}_1.mp4", Body=data, ContentType="video/mp4")
                     res["items"][iid]["video"] = len(data); left.pop(iid); print(iid, "VIDEO", len(data) // 1000, "KB", flush=True); save_res()
             except Exception as e: print(iid, "collect retry", type(e).__name__, flush=True)
-            finally: pg.close()
     for iid in left: res["items"][iid]["video"] = "NOT READY in time"
     res["tunnel"] = dict(stats); res["t1"] = time.strftime("%H:%M:%S"); res["done"] = True; save_res(); br.close()
 print("tunnel connections", stats, "| videos", sum(1 for x in res["items"].values() if isinstance(x.get("video"), int)), "of", len(JOB["items"]))
