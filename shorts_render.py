@@ -136,10 +136,19 @@ if MODE == "full":
     cx, cy, cs = JOB["face_crop"]; FD = dur(f"{IN}/face.mp4") or 30
     stage("lipsync")
     lip = {}
+    FWIN = JOB.get("face_win") or []   # owner 23 Nov (outfit rotation): eyes-open, no-smile windows (s) of the outfit clip
+    def face_in(n, L):   # -> (start s, source) for face line n of length L; a line never runs past a window
+        if not FWIN: return (n * FD / max(1, len(FW)) + 1.3 * n) % max(0.1, FD - L - 1), f"{IN}/face.mp4"   # old rule (no windows in the job)
+        wa, wb = FWIN[n % len(FWIN)]; wl = max(0.2, wb - wa)
+        if L + 0.5 <= wl: return wa + (1.3 * n) % max(0.01, wl - L - 0.5), f"{IN}/face.mp4"
+        lp = f"{T}/fwin{n % len(FWIN)}.mp4"   # line longer than the window: loop INSIDE it (forward then reverse, no jump)
+        if not os.path.exists(lp):
+            sh(f"ffmpeg -y -loglevel error -ss {wa:.3f} -t {wl:.3f} -i {IN}/face.mp4 -filter_complex '[0:v]split[f][r];[r]reverse[rv];[f][rv]concat=n=2:v=1:a=0[o]' -map '[o]' -an -c:v libx264 -crf 12 -preset veryfast -pix_fmt yuv420p {lp}", quiet=True)
+        return (1.3 * n) % wl, lp
     for n, a, b in FW:   # one lane: the runner has 4 vCPU, two parallel processes would only fight for them
-        L = b - a; fo = (n * FD / max(1, len(FW)) + 1.3 * n) % max(0.1, FD - L - 1)
+        L = b - a; fo, fsrc = face_in(n, L)
         sh(f"ffmpeg -y -loglevel error -ss {a:.3f} -t {L:.3f} -i {T}/v16.wav {T}/fa{n}.wav", quiet=True)
-        sh(f"ffmpeg -y -loglevel error -stream_loop -1 -ss {fo:.2f} -i {IN}/face.mp4 -t {L + 0.5:.3f} -vf 'crop={cs}:{cs}:{cx}:{cy},scale=512:512,fps=25' -an -c:v libx264 -crf 12 -preset veryfast -pix_fmt yuv420p {T}/fv{n}.mp4", quiet=True)
+        sh(f"ffmpeg -y -loglevel error -stream_loop -1 -ss {fo:.2f} -i {fsrc} -t {L + 0.5:.3f} -vf 'crop={cs}:{cs}:{cx}:{cy},scale=512:512,fps=25' -an -c:v libx264 -crf 12 -preset veryfast -pix_fmt yuv420p {T}/fv{n}.mp4", quiet=True)
         t1 = time.time()
         sh(f"python -m scripts.inference --unet_config_path configs/unet/stage2.yaml --inference_ckpt_path checkpoints/latentsync_unet.pt --inference_steps {STEPS} --guidance_scale 1.5 {DC}--video_path {T}/fv{n}.mp4 --audio_path {T}/fa{n}.wav --video_out_path {T}/fl{n}.mp4")
         lip[n] = {"sec_of_video": round(L, 2), "min": round((time.time() - t1) / 60, 2), "ok": os.path.exists(f"{T}/fl{n}.mp4")}
