@@ -90,10 +90,19 @@ if CMD == "plan":
     t_al = mins(t_al)
     cx, cy, cs = JOB["face_crop"]; FD = dur(f"{IN}/face.mp4") or 30
     inc = []; plan = {"windows": []}
+    FWIN = JOB.get("face_win") or []   # owner 23 Nov (outfit rotation): eyes-open, no-smile windows (s) of the outfit clip
+    def face_in(n, L):   # -> (start s, source) for face line n of length L; a line never runs past a window
+        if not FWIN: return (n * FD / max(1, len(FW)) + 1.3 * n) % max(0.1, FD - L - 1), f"{IN}/face.mp4"   # old rule (no windows in the job)
+        wa, wb = FWIN[n % len(FWIN)]; wl = max(0.2, wb - wa)
+        if L + 0.5 <= wl: return wa + (1.3 * n) % max(0.01, wl - L - 0.5), f"{IN}/face.mp4"
+        lp = f"{T}/fwin{n % len(FWIN)}.mp4"   # line longer than the window: loop INSIDE it (forward then reverse, no jump)
+        if not os.path.exists(lp):
+            sh(f"ffmpeg -y -loglevel error -ss {wa:.3f} -t {wl:.3f} -i {IN}/face.mp4 -filter_complex '[0:v]split[f][r];[r]reverse[rv];[f][rv]concat=n=2:v=1:a=0[o]' -map '[o]' -an -c:v libx264 -crf 12 -preset veryfast -pix_fmt yuv420p {lp}", quiet=True)
+        return (1.3 * n) % wl, lp
     for n, a, b in FW:   # the same face/voice inputs the Kaggle kernel makes for window n
-        L = b - a; fo = (n * FD / max(1, len(FW)) + 1.3 * n) % max(0.1, FD - L - 1)
+        L = b - a; fo, fsrc = face_in(n, L)
         sh(f"ffmpeg -y -loglevel error -ss {a:.3f} -t {L:.3f} -i {T}/v16.wav {T}/fa{n}.wav", quiet=True)
-        sh(f"ffmpeg -y -loglevel error -stream_loop -1 -ss {fo:.2f} -i {IN}/face.mp4 -t {L + 0.5:.3f} -vf 'crop={cs}:{cs}:{cx}:{cy},scale=512:512,fps=25' -an -c:v libx264 -crf 12 -preset veryfast -pix_fmt yuv420p {T}/fv{n}.mp4", quiet=True)
+        sh(f"ffmpeg -y -loglevel error -stream_loop -1 -ss {fo:.2f} -i {fsrc} -t {L + 0.5:.3f} -vf 'crop={cs}:{cs}:{cx}:{cy},scale=512:512,fps=25' -an -c:v libx264 -crf 12 -preset veryfast -pix_fmt yuv420p {T}/fv{n}.mp4", quiet=True)
         put(f"{T}/fa{n}.wav", WORK + f"fa{n}.wav", "audio/wav"); put(f"{T}/fv{n}.mp4", WORK + f"fv{n}.mp4", "video/mp4")
         nseg = math.ceil((L * FPS + 3) / SEG)   # whisper gives ~L*25+1 frames; one spare segment at most (it exits at once if empty)
         plan["windows"].append({"n": n, "a": a, "b": b, "L": L, "segs": nseg}); inc += [{"n": n, "s": s} for s in range(nseg)]
