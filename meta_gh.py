@@ -1,4 +1,6 @@
 # Owner 23 Nov: Meta AI clips made on GitHub, while Meta sees the owner's laptop internet (tunnel test).
+# Owner 23 Nov: only Meta's pages/requests (meta.ai, facebook.com) go through the laptop; ALL downloads (page code, pictures, videos
+# from Meta's CDN *.fbcdn.net) come straight from GitHub's data centre, so the laptop's home internet stays light.
 # Runs on a GitHub runner:
 #   1. a local SOCKS5 proxy (127.0.0.1:1080) turns every Chrome connection into a WebSocket through the owner's
 #      Cloudflare quick tunnel -> laptop_bridge.py -> the real Meta site, from the laptop's home connection
@@ -61,7 +63,7 @@ def shot(pg, name):
     try: S3.put_object(Bucket=B, Key=RES.rsplit("/", 1)[0] + f"/debug_{name}.png", Body=pg.screenshot())
     except Exception: pass
 with sync_playwright() as p:
-    br = p.chromium.launch(headless=True, proxy={"server": "socks5://127.0.0.1:1080"}, args=["--disable-blink-features=AutomationControlled"])
+    br = p.chromium.launch(headless=True, proxy={"server": "socks5://127.0.0.1:1080", "bypass": "*.fbcdn.net,fbcdn.net,*.cdninstagram.com"}, args=["--disable-blink-features=AutomationControlled"])
     ctx = br.new_context(storage_state=STATE, viewport={"width": 1280, "height": 900}, locale="en-IN", timezone_id="Asia/Kolkata",
                          user_agent=JOB.get("ua") or None)
     ctx.route("**/*.{mp4,webm,m4s,woff,woff2,ttf}", lambda r: r.abort())   # never pull video through the tunnel
