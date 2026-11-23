@@ -4,7 +4,7 @@ run-name: meta ${{ inputs.job }}
 
 # Owner 23 Nov 2026: Meta AI clips made on GitHub; Meta sees the owner's laptop internet (Cloudflare quick tunnel -> laptop_bridge.py).
 # Job, tunnel address and Meta session are read from the private R2 bucket at run time; this public log prints only counts/states.
-concurrency: { group: meta-tunnel, cancel-in-progress: false }
+# no concurrency group: a pending run would be REPLACED by a newer one; the laptop feeder keeps at most 3 runs in flight
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
 jobs:
   meta:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     env:
       CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
       CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
