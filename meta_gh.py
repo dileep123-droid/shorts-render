@@ -69,6 +69,34 @@ with sync_playwright() as p:
     def in_r2(iid):
         try: S3.head_object(Bucket=B, Key=JOB["out"] + f"{iid}_1.mp4"); return True
         except Exception: return False
+    # character pictures (23 Nov): laptop picture from R2, or made here (image prompt -> picture link -> direct download)
+    REFF = {}
+    def open_chat(prompt, files=()):
+        pg = ctx.new_page(); pg.set_default_timeout(90000)
+        pg.goto("https://www.meta.ai/", wait_until="domcontentloaded", timeout=120000)
+        ed = pg.locator("[data-lexical-editor], [contenteditable='true']").first; ed.wait_for(state="visible", timeout=45000); time.sleep(1.5)
+        if files: pg.locator("input[type=file]").first.set_input_files(list(files)); time.sleep(6 + 6 * len(files))   # same waits as meta_send.py
+        ed.click(); pg.keyboard.insert_text(prompt); time.sleep(1); pg.keyboard.press("Enter")
+        for _ in range(40):
+            time.sleep(1)
+            if pg.url.rstrip("/") != "https://www.meta.ai": return pg, pg.url
+        return pg, None
+    for c, r in (JOB.get("refs") or {}).items():
+        f = f"/tmp/ref_{c}.jpg"
+        try: S3.download_file(B, r["key"], f); REFF[c] = f; continue
+        except Exception: pass
+        if not r.get("prompt"): continue
+        try:
+            pg, url = open_chat(r["prompt"])
+            for _ in range(36):                                # up to ~6 min for the picture
+                time.sleep(10)
+                im = pg.evaluate("()=>[...document.querySelectorAll('main img')].filter(e=>e.naturalWidth>=400 && /fbcdn|scontent/.test(e.currentSrc||e.src)).map(e=>e.currentSrc||e.src)")
+                if im:
+                    open(f, "wb").write(urllib.request.urlopen(urllib.request.Request(im[0], headers={"User-Agent": "Mozilla/5.0"}), timeout=60).read())
+                    S3.upload_file(f, B, r["key"]); REFF[c] = f; break
+            pg.close()
+        except Exception as e: print("char", c, "failed", type(e).__name__, flush=True)
+    print("character pictures ready:", len(REFF), "of", len(JOB.get("refs") or {}), flush=True)
     for it in JOB["items"]:                                # send every prompt (like meta_send.py send)
         if in_r2(it["id"]): res["items"][it["id"]] = {"send": "ALREADY IN R2", "video": "kept"}; continue
         pg = ctx.new_page(); pg.set_default_timeout(90000); st = "?"
@@ -77,7 +105,10 @@ with sync_playwright() as p:
             ed = pg.locator("[data-lexical-editor], [contenteditable='true']").first
             try: ed.wait_for(state="visible", timeout=45000)
             except Exception: st = "NO PROMPT BOX (logged out / blocked?)"; shot(pg, it["id"] + "_nobox"); raise
-            time.sleep(1.5); ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(1); pg.keyboard.press("Enter")
+            time.sleep(1.5)
+            fl = [REFF[c] for c in it.get("chars", []) if c in REFF]
+            if fl: pg.locator("input[type=file]").first.set_input_files(fl); time.sleep(6 + 6 * len(fl))
+            ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(1); pg.keyboard.press("Enter")
             for _ in range(40):
                 time.sleep(1)
                 if pg.url.rstrip("/") != "https://www.meta.ai": chats[it["id"]] = pg.url; break
