@@ -55,9 +55,10 @@ threading.Thread(target=socks_thread, daemon=True).start(); time.sleep(1)
 # ---------- 2) Chromium on meta.ai through the tunnel ----------
 from playwright.sync_api import sync_playwright
 res = {"t0": time.strftime("%H:%M:%S"), "items": {}}
-def save_res(): S3.put_object(Bucket=B, Key=JOB["out"] + "result.json", Body=json.dumps(res, indent=1).encode())
+RES = JOB.get("res") or JOB["out"] + "result.json"   # private R2 report (the feeder reads "done")
+def save_res(): S3.put_object(Bucket=B, Key=RES, Body=json.dumps(res, indent=1).encode())
 def shot(pg, name):
-    try: S3.put_object(Bucket=B, Key=JOB["out"] + f"debug_{name}.png", Body=pg.screenshot())
+    try: S3.put_object(Bucket=B, Key=RES.rsplit("/", 1)[0] + f"/debug_{name}.png", Body=pg.screenshot())
     except Exception: pass
 with sync_playwright() as p:
     br = p.chromium.launch(headless=True, proxy={"server": "socks5://127.0.0.1:1080"}, args=["--disable-blink-features=AutomationControlled"])
@@ -65,7 +66,11 @@ with sync_playwright() as p:
                          user_agent=JOB.get("ua") or None)
     ctx.route("**/*.{mp4,webm,m4s,woff,woff2,ttf}", lambda r: r.abort())   # never pull video through the tunnel
     chats = {}
+    def in_r2(iid):
+        try: S3.head_object(Bucket=B, Key=JOB["out"] + f"{iid}_1.mp4"); return True
+        except Exception: return False
     for it in JOB["items"]:                                # send every prompt (like meta_send.py send)
+        if in_r2(it["id"]): res["items"][it["id"]] = {"send": "ALREADY IN R2", "video": "kept"}; continue
         pg = ctx.new_page(); pg.set_default_timeout(90000); st = "?"
         try:
             pg.goto("https://www.meta.ai/", wait_until="domcontentloaded", timeout=120000)
@@ -77,10 +82,14 @@ with sync_playwright() as p:
                 time.sleep(1)
                 if pg.url.rstrip("/") != "https://www.meta.ai": chats[it["id"]] = pg.url; break
             st = "SENT" if it["id"] in chats else "NOT SENT"
-            if st != "SENT": shot(pg, it["id"] + "_notsent")
+            if st != "SENT":
+                shot(pg, it["id"] + "_notsent")
+                body = pg.evaluate("()=>(document.querySelector('main')||document.body).innerText.slice(-300)").lower()
+                if any(k in body for k in ["limit", "try again later", "log in", "suspicious", "confirm"]): st = "NOT SENT (limit/login/check)"
         except Exception as e:
             if st == "?": st = "ERROR " + type(e).__name__
-        res["items"][it["id"]] = {"send": st}; print(it["id"], st, flush=True); save_res()
+        res["items"][it["id"]] = {"send": st, "chat": chats.get(it["id"], "")}; print(it["id"], st.split(" (")[0], flush=True); save_res()
+        if st.startswith("NOT SENT (limit"): print("STOPPING: Meta limit/login/check page", flush=True); break
         pg.close()
     deadline = time.time() + 60 * JOB.get("wait_min", 15); left = dict(chats)
     while left and time.time() < deadline:                 # collect: reopen each chat, read the video link only
@@ -100,5 +109,5 @@ with sync_playwright() as p:
             except Exception as e: print(iid, "collect retry", type(e).__name__, flush=True)
             finally: pg.close()
     for iid in left: res["items"][iid]["video"] = "NOT READY in time"
-    res["tunnel"] = dict(stats); res["t1"] = time.strftime("%H:%M:%S"); save_res(); br.close()
+    res["tunnel"] = dict(stats); res["t1"] = time.strftime("%H:%M:%S"); res["done"] = True; save_res(); br.close()
 print("tunnel connections", stats, "| videos", sum(1 for x in res["items"].values() if isinstance(x.get("video"), int)), "of", len(JOB["items"]))
