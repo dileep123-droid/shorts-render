@@ -1,5 +1,10 @@
 name: shorts-chunked
 
+run-name: ${{ inputs.short }} (${{ inputs.prefix }})
+
+# one Short at a time on this account: the matrix alone takes ~19 of the 20 runner slots
+concurrency: { group: shorts-chunked, cancel-in-progress: false }
+
 # Dileep Explains: ONE Short rendered by ~20 GitHub runners at once (23 Nov 2026 test, CPU only).
 #   plan     : word timing once + face windows -> one matrix entry per 16-frame LatentSync segment
 #   chunk    : each runner lip-syncs ONE segment (LatentSync 1.5, 12 steps + DeepCache, seed 1247) -> R2
@@ -14,7 +19,7 @@ on:
     inputs:
 
       short:  { description: 'job name in R2, e.g. korea_age_te_split', required: true }
-      prefix: { description: 'R2 test prefix under s2work/shorts1/ (must start with gh_)', required: false, default: 'gh_test' }
+      prefix: { description: 'R2 work prefix under s2work/shorts1/ (gh_test = test, gh_prod = production: final video -> out/)', required: false, default: 'gh_test' }
 
 env:
 
