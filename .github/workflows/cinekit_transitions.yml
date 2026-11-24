@@ -1,0 +1,42 @@
+name: cinekit-transitions
+
+run-name: book ${{ inputs.tag }} ids ${{ inputs.ids }}
+
+# TRANSITIONS BOOK: 3 s 640x360 previews of gl-transitions (moderngl on Mesa llvmpipe, EGL), our Meta overlays,
+# ffmpeg xfade and LottieFiles mattes, between two ic814 Meta clips. Reads R2 s2work/shorts1/clips/ (read only),
+# writes only s2work/cinekit/transitions_book/previews/ and results/<tag>.json. Dispatch several runs in parallel
+# (10 ids each) with gh_cinekit.py book.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ids: { description: 'item ids from cinekit/transitions/book_spec.json, e.g. 1-10 or 3,5,9', required: true }
+      tag: { description: 'run tag (a-z0-9_-), names results/<tag>.json', required: true }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  IDS: ${{ inputs.ids }}
+  TAG: ${{ inputs.tag }}
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults: { run: { working-directory: cinekit/transitions } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: tools
+        run: |
+          case "$IDS" in *[!0-9,-]*|'') echo "bad ids"; exit 1;; esac
+          case "$TAG" in *[!A-Za-z0-9_-]*|'') echo "bad tag"; exit 1;; esac
+          sudo apt-get update -q
+          sudo apt-get install -y -q ffmpeg libegl1 libegl-mesa0 libgl1-mesa-dri libgl1 xvfb fonts-dejavu-core > /dev/null
+          pip install -q moderngl==5.12.0 numpy pillow boto3 rlottie-python==1.3.8
+          mkdir -p gltr && cd gltr && npm pack gl-transitions@3.3.0 --silent && tar xzf gl-transitions-3.3.0.tgz && ls package/glsl3 | wc -l
+      - name: render
+        run: |
+          xvfb-run -a python -u render_book.py --ids "$IDS" --tag "$TAG" --gl gltr/package 2>&1
