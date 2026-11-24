@@ -1,0 +1,28 @@
+name: clips-to-drive
+
+run-name: clips to drive ${{ inputs.batch }}
+
+# Owner 24 Nov 2026: Meta clips R2 -> Google Drive "Dileep Explains Meta Clips/<batch>" on GitHub's internet (not the home connection).
+# R2 copy is kept. Only counts are printed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch: { description: 'clip folder under s2work/shorts1/clips/, e.g. ic814', required: true }
+
+jobs:
+  copy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+      CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+      CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+      DRIVE_TOKEN: ${{ secrets.DRIVE_TOKEN }}
+      BATCH: ${{ inputs.batch }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q boto3
+      - run: python clips_to_drive.py "$BATCH"
