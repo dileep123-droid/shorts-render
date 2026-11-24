@@ -1,0 +1,1424 @@
+{
+ "gl_version": "3.3.0",
+ "size": [
+  640,
+  360
+ ],
+ "fps": 30,
+ "seconds": 3,
+ "clip_a": "s2work/shorts1/clips/ic814/ic814_kathmandu_valley_1.mp4",
+ "clip_b": "s2work/shorts1/clips/ic814/ic814_plane_kdh_aerial_1.mp4",
+ "kit_prefix": "s2work/shorts1/clips/kit_meta/kit_",
+ "out_prefix": "s2work/cinekit/transitions_book/",
+ "items": [
+  {
+   "id": 1,
+   "name": "WhipPan",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 15,
+   "use": [
+    "place change",
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 1
+  },
+  {
+   "id": 2,
+   "name": "CrossZoom",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 1
+  },
+  {
+   "id": 3,
+   "name": "FilmBurn",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "time jump",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Japan 00:35.4 yellow film-burn wipe; Dhruv Always Tired 18:57 film-burn wipe (outro)",
+   "batch": 1
+  },
+  {
+   "id": 4,
+   "name": "LensFlare",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "title",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Japan 00:13.6 orange light-leak flash; Dhruv Epstein 00:15.5 light-leak; Dhruv Bhangarh 00:20.8 yellow leak flash",
+   "batch": 1
+  },
+  {
+   "id": 5,
+   "name": "LightWipe",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "place change",
+    "title"
+   ],
+   "creator_match": "Dhruv Japan 00:13.6 orange light-leak flash; Dhruv Epstein 00:15.5 light-leak; Dhruv Bhangarh 00:20.8 yellow leak flash",
+   "batch": 1
+  },
+  {
+   "id": 6,
+   "name": "GlitchMemories",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 18,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 1
+  },
+  {
+   "id": 7,
+   "name": "StripDatamoshGlitch",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 18,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 1
+  },
+  {
+   "id": 8,
+   "name": "InkBleed",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 36,
+   "use": [
+    "time jump",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 1
+  },
+  {
+   "id": 9,
+   "name": "SmokeDissolve",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 36,
+   "use": [
+    "time jump",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Kailash 06:03.8 push through smoke into whip flash",
+   "batch": 1
+  },
+  {
+   "id": 10,
+   "name": "BurnThrough",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "reveal",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Japan 00:35.4 yellow film-burn wipe; Dhruv Always Tired 18:57 film-burn wipe (outro)",
+   "batch": 1
+  },
+  {
+   "id": 11,
+   "name": "Cube",
+   "kind": "gl",
+   "category": "3D",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "place change",
+    "chapter"
+   ],
+   "creator_match": "",
+   "batch": 1
+  },
+  {
+   "id": 12,
+   "name": "InvertedPageCurl",
+   "kind": "gl",
+   "category": "3D",
+   "source": "gl-transitions@3.3.0",
+   "licence": "BSD 3-Clause (gl-transitions InvertedPageCurl header)",
+   "frames": 36,
+   "use": [
+    "time jump",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Epstein 00:04 wipe across a document; Dhruv Japan 00:17.4 fast slide on a timeline",
+   "batch": 1
+  },
+  {
+   "id": 13,
+   "name": "WarpSpeed",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "place change",
+    "title"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 1
+  },
+  {
+   "id": 14,
+   "name": "Overexposure",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 18,
+   "use": [
+    "reveal",
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 1
+  },
+  {
+   "id": 15,
+   "name": "light_leak",
+   "kind": "kit",
+   "category": "light/film",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "time jump",
+    "title"
+   ],
+   "creator_match": "Dhruv Japan 00:13.6 orange light-leak flash; Dhruv Epstein 00:15.5 light-leak; Dhruv Bhangarh 00:20.8 yellow leak flash",
+   "batch": 1,
+   "mode": "screen"
+  },
+  {
+   "id": 16,
+   "name": "film_burn",
+   "kind": "kit",
+   "category": "light/film",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "time jump",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Japan 00:35.4 yellow film-burn wipe; Dhruv Always Tired 18:57 film-burn wipe (outro)",
+   "batch": 1,
+   "mode": "screen"
+  },
+  {
+   "id": 17,
+   "name": "flash_white",
+   "kind": "kit",
+   "category": "light/film",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 30,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 1,
+   "mode": "screen"
+  },
+  {
+   "id": 18,
+   "name": "glitch_vhs",
+   "kind": "kit",
+   "category": "glitch/tech",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 24,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 1,
+   "mode": "screen"
+  },
+  {
+   "id": 19,
+   "name": "ink_bleed",
+   "kind": "kit",
+   "category": "shape/liquid",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "time jump",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 1,
+   "mode": "matte_inv"
+  },
+  {
+   "id": 20,
+   "name": "smoke_wipe",
+   "kind": "kit",
+   "category": "shape/liquid",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "reveal",
+    "place change"
+   ],
+   "creator_match": "Dhruv Kailash 06:03.8 push through smoke into whip flash",
+   "batch": 1,
+   "mode": "matte"
+  },
+  {
+   "id": 21,
+   "name": "FilmDissolve",
+   "kind": "gl",
+   "category": "subtle/clean",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 22,
+   "name": "DefocusBlur",
+   "kind": "gl",
+   "category": "subtle/clean",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "time jump",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 23,
+   "name": "FadeGrayscale",
+   "kind": "gl",
+   "category": "subtle/clean",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 24,
+   "name": "BokehDissolve",
+   "kind": "gl",
+   "category": "subtle/clean",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "time jump",
+    "title"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 25,
+   "name": "DirectionalWipe",
+   "kind": "gl",
+   "category": "subtle/clean",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:39 / 03:12 diagonal split wipe",
+   "batch": 2
+  },
+  {
+   "id": 26,
+   "name": "SimpleZoomOut",
+   "kind": "gl",
+   "category": "subtle/clean",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 2
+  },
+  {
+   "id": 27,
+   "name": "WhipSpin",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 15,
+   "use": [
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 2
+  },
+  {
+   "id": 28,
+   "name": "WhipTilt",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 15,
+   "use": [
+    "place change",
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 2
+  },
+  {
+   "id": 29,
+   "name": "CrossWarp",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 2
+  },
+  {
+   "id": 30,
+   "name": "DirectionalEased",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 15,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 2
+  },
+  {
+   "id": 31,
+   "name": "StretchSlide",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 18,
+   "use": [
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 2
+  },
+  {
+   "id": 32,
+   "name": "CameraShake",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 15,
+   "use": [
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 2
+  },
+  {
+   "id": 33,
+   "name": "ZoomInOut",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "place change",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 2
+  },
+  {
+   "id": 34,
+   "name": "Revolve",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 2
+  },
+  {
+   "id": 35,
+   "name": "SplitSlideInOutHorizontal",
+   "kind": "gl",
+   "category": "energetic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 18,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:39 / 03:12 diagonal split wipe",
+   "batch": 2
+  },
+  {
+   "id": 36,
+   "name": "LightStreaks",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "title",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Japan 00:13.6 orange light-leak flash; Dhruv Epstein 00:15.5 light-leak; Dhruv Bhangarh 00:20.8 yellow leak flash",
+   "batch": 2
+  },
+  {
+   "id": 37,
+   "name": "LightRays",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "title",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Japan 00:13.6 orange light-leak flash; Dhruv Epstein 00:15.5 light-leak; Dhruv Bhangarh 00:20.8 yellow leak flash",
+   "batch": 2
+  },
+  {
+   "id": 38,
+   "name": "BloomDissolve",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "time jump",
+    "title"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 39,
+   "name": "FlashFade",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 15,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 2
+  },
+  {
+   "id": 40,
+   "name": "DreamyZoom",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "time jump",
+    "title"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 2
+  },
+  {
+   "id": 41,
+   "name": "LightningFlash",
+   "kind": "gl",
+   "category": "light/film",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 2
+  },
+  {
+   "id": 42,
+   "name": "GlitchDisplace",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 18,
+   "use": [
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 2
+  },
+  {
+   "id": 43,
+   "name": "GlitchFlicker",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 18,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 2
+  },
+  {
+   "id": 44,
+   "name": "VhsTracking",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 2
+  },
+  {
+   "id": 45,
+   "name": "TvLostSignal",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "time jump",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 2
+  },
+  {
+   "id": 46,
+   "name": "StaticFade",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 15,
+   "use": [
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 2
+  },
+  {
+   "id": 47,
+   "name": "CodeRain",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 2
+  },
+  {
+   "id": 48,
+   "name": "TvTurnOff",
+   "kind": "gl",
+   "category": "glitch/tech",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 24,
+   "use": [
+    "chapter"
+   ],
+   "creator_match": "Dhruv Always Tired 02:51.2 / Bhangarh 11:05.4 / Japan 07:37.4 dip to black",
+   "batch": 2
+  },
+  {
+   "id": 49,
+   "name": "GravityLens",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "",
+   "batch": 2
+  },
+  {
+   "id": 50,
+   "name": "Shatter",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "",
+   "batch": 2
+  },
+  {
+   "id": 51,
+   "name": "Vaporize",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 36,
+   "use": [
+    "reveal",
+    "time jump"
+   ],
+   "creator_match": "Dhruv Kailash 06:03.8 push through smoke into whip flash",
+   "batch": 2
+  },
+  {
+   "id": 52,
+   "name": "Disintegrate",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 36,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Dhruv Kailash 06:03.8 push through smoke into whip flash",
+   "batch": 2
+  },
+  {
+   "id": 53,
+   "name": "SpotlightWipe",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 36,
+   "use": [
+    "reveal",
+    "title"
+   ],
+   "creator_match": "Nitish Flydubai 03:01 hex/iris graphic wipe",
+   "batch": 2
+  },
+  {
+   "id": 54,
+   "name": "PhotoDevelop",
+   "kind": "gl",
+   "category": "dramatic",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 55,
+   "name": "GooeyWipe",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2
+  },
+  {
+   "id": 56,
+   "name": "LiquidFill",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "place change",
+    "time jump"
+   ],
+   "creator_match": "",
+   "batch": 2
+  },
+  {
+   "id": 57,
+   "name": "BrushWipe",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title"
+   ],
+   "creator_match": "Dhruv Epstein 00:04 wipe across a document; Dhruv Japan 00:17.4 fast slide on a timeline",
+   "batch": 2
+  },
+  {
+   "id": 58,
+   "name": "SplatterWipe",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "action",
+    "title"
+   ],
+   "creator_match": "",
+   "batch": 2
+  },
+  {
+   "id": 59,
+   "name": "PaperTear",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "reveal",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Epstein 00:04 wipe across a document; Dhruv Japan 00:17.4 fast slide on a timeline",
+   "batch": 2
+  },
+  {
+   "id": 60,
+   "name": "FlameWipe",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Japan 00:35.4 yellow film-burn wipe; Dhruv Always Tired 18:57 film-burn wipe (outro)",
+   "batch": 2
+  },
+  {
+   "id": 61,
+   "name": "WaterDrop",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 62,
+   "name": "ShutterWipe",
+   "kind": "gl",
+   "category": "shape/liquid",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 20,
+   "use": [
+    "place change",
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:39 / 03:12 diagonal split wipe",
+   "batch": 2
+  },
+  {
+   "id": 63,
+   "name": "InsideCube",
+   "kind": "gl",
+   "category": "3D",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2
+  },
+  {
+   "id": 64,
+   "name": "BookFlip",
+   "kind": "gl",
+   "category": "3D",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 36,
+   "use": [
+    "chapter",
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:04 wipe across a document; Dhruv Japan 00:17.4 fast slide on a timeline",
+   "batch": 2
+  },
+  {
+   "id": 65,
+   "name": "Doorway",
+   "kind": "gl",
+   "category": "3D",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "reveal",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2
+  },
+  {
+   "id": 66,
+   "name": "Prisms",
+   "kind": "gl",
+   "category": "3D",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 30,
+   "use": [
+    "chapter"
+   ],
+   "creator_match": "Nitish Flydubai 00:39 / 03:12 diagonal split wipe",
+   "batch": 2
+  },
+  {
+   "id": 67,
+   "name": "embers",
+   "kind": "kit",
+   "category": "light/film",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "action",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Japan 00:35.4 yellow film-burn wipe; Dhruv Always Tired 18:57 film-burn wipe (outro)",
+   "batch": 2,
+   "mode": "screen"
+  },
+  {
+   "id": 68,
+   "name": "dust_beam",
+   "kind": "kit",
+   "category": "light/film",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "time jump",
+    "title"
+   ],
+   "creator_match": "Dhruv Japan 00:13.6 orange light-leak flash; Dhruv Epstein 00:15.5 light-leak; Dhruv Bhangarh 00:20.8 yellow leak flash",
+   "batch": 2,
+   "mode": "screen"
+  },
+  {
+   "id": 69,
+   "name": "red_alert",
+   "kind": "kit",
+   "category": "dramatic",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 30,
+   "use": [
+    "reveal",
+    "action"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "mode": "screen"
+  },
+  {
+   "id": 70,
+   "name": "paper_tear",
+   "kind": "kit",
+   "category": "shape/liquid",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "time jump",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Epstein 00:04 wipe across a document; Dhruv Japan 00:17.4 fast slide on a timeline",
+   "batch": 2,
+   "mode": "matte_inv",
+   "thr": [
+    0.85,
+    0.97
+   ]
+  },
+  {
+   "id": 71,
+   "name": "fog_through",
+   "kind": "kit",
+   "category": "dramatic",
+   "source": "our Meta overlay (kit_meta)",
+   "licence": "own (Meta AI generated overlay, R2 s2work/shorts1/clips/kit_meta/)",
+   "frames": 40,
+   "use": [
+    "place change",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Kailash 06:03.8 push through smoke into whip flash",
+   "batch": 2,
+   "mode": "dip"
+  },
+  {
+   "id": 72,
+   "name": "fade",
+   "kind": "xfade",
+   "category": "subtle/clean",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 20,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 73,
+   "name": "fadeblack",
+   "kind": "xfade",
+   "category": "dramatic",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 24,
+   "use": [
+    "reveal",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Always Tired 02:51.2 / Bhangarh 11:05.4 / Japan 07:37.4 dip to black",
+   "batch": 2
+  },
+  {
+   "id": 74,
+   "name": "fadewhite",
+   "kind": "xfade",
+   "category": "light/film",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 10,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 2
+  },
+  {
+   "id": 75,
+   "name": "smoothleft",
+   "kind": "xfade",
+   "category": "energetic",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 12,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 2
+  },
+  {
+   "id": 76,
+   "name": "zoomin",
+   "kind": "xfade",
+   "category": "energetic",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 15,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 2
+  },
+  {
+   "id": 77,
+   "name": "circleopen",
+   "kind": "xfade",
+   "category": "shape/liquid",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 20,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 03:01 hex/iris graphic wipe",
+   "batch": 2
+  },
+  {
+   "id": 78,
+   "name": "hblur",
+   "kind": "xfade",
+   "category": "subtle/clean",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 15,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 2
+  },
+  {
+   "id": 79,
+   "name": "diagtl",
+   "kind": "xfade",
+   "category": "subtle/clean",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 18,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:39 / 03:12 diagonal split wipe",
+   "batch": 2
+  },
+  {
+   "id": 80,
+   "name": "Lottie_circle_transition",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/circle-transition-d4XT1YXqsi",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 03:01 hex/iris graphic wipe",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/34c3d486-fd9b-11ee-b21f-3b248d04803b/Fj5o4ECt3C.lottie"
+  },
+  {
+   "id": 81,
+   "name": "Lottie_liquid_transition_screen",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/liquid-transition-screen-ngZeee3Tzl",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/26c61cf2-1167-11ee-8bff-cb4e2cb5f1f1/d6zCNDTi0u.lottie"
+  },
+  {
+   "id": 82,
+   "name": "Lottie_transition_01",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/transition-01-bKunH9juUm",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/4ccecca8-1173-11ee-9c4b-2313e743b1f9/pUXIgBh44q.lottie"
+  },
+  {
+   "id": 83,
+   "name": "Lottie_transition",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/transition-a8zrS06lTH",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/58763396-1152-11ee-bb5d-7f7dcc1fcad2/v73H3Up1Lc.lottie"
+  },
+  {
+   "id": 84,
+   "name": "Lottie_menu_page_transition",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/menu-page-transition-bNxcsVj25R",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/42cb212e-1151-11ee-bff9-77827c2c1f9c/PGbMe98oUl.lottie"
+  },
+  {
+   "id": 85,
+   "name": "Lottie_circle_radial_wipe",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/circle-radial-wipe-sn5GSvaUiQ",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 03:01 hex/iris graphic wipe",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/318b8628-1152-11ee-beda-6f9e8f339229/Y59LvRTtM1.lottie"
+  },
+  {
+   "id": 86,
+   "name": "Lottie_simple_screen_wipe",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/simple-screen-wipe-dcDpZyZXPC",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/0447a4ee-1161-11ee-b6e3-7f0642c06a62/6M3XV5CQWk.lottie"
+  },
+  {
+   "id": 87,
+   "name": "Lottie_stripe_wipe",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/stripe-wipe-jXJi0tLSPm",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/4371daaa-1151-11ee-81e9-87d8c424b780/L4dWoBXXaS.lottie"
+  },
+  {
+   "id": 88,
+   "name": "Lottie_wavy_wipe",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/wavy-wipe-yfUsRZfqsd",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/437004fa-1151-11ee-81e8-0fce47bd0a08/OknhJZftWa.lottie"
+  },
+  {
+   "id": 89,
+   "name": "Lottie_geometric_shapes_transition",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/geometric-shapes-transition-zxlHGObXuz",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/80e7b8f4-1161-11ee-940f-0f9ef4c83192/jSs2QwZ0Ap.lottie"
+  },
+  {
+   "id": 90,
+   "name": "Lottie_mask_reveal_transition",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/mask-reveal-transition-zxVeEUYgxF",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/56d3047c-116d-11ee-ae13-cb033a798628/AXQ4aBEa9L.lottie"
+  },
+  {
+   "id": 91,
+   "name": "Lottie_transition_one",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/transition-one-oFFQiGDOIu",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/9988c1c7-d8ad-496e-969f-0bded272e652/oFFQiGDOIu.lottie"
+  },
+  {
+   "id": 92,
+   "name": "Lottie_wiper_transition",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/wiper-transition-V5NU5imdlR",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/91a6ac64-1188-11ee-b8f5-7342a402d9c7/v8cjXzBOIH.lottie"
+  },
+  {
+   "id": 93,
+   "name": "Lottie_gdf_wipe_animation",
+   "kind": "lottie",
+   "category": "shape/liquid",
+   "source": "LottieFiles https://lottiefiles.com/free-animation/gdf-wipe-animation-2alDHGZcT9",
+   "licence": "Lottie Simple License FL 9.13.21 (https://lottiefiles.com/page/license) - commercial OK, no attribution required",
+   "frames": 30,
+   "use": [
+    "chapter",
+    "title",
+    "place change"
+   ],
+   "creator_match": "",
+   "batch": 2,
+   "url": "https://assets-v2.lottiefiles.com/a/4884eaf2-9502-11ee-8d36-cff82efb8a83/uxfB9NLgf5.lottie"
+  }
+ ]
+}
