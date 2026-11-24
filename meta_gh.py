@@ -125,6 +125,12 @@ with sync_playwright() as p:
         if it not in todo: res["items"][it["id"]] = {"send": "ALREADY IN R2", "video": "kept"}
     stop = False
     TABS = int(JOB.get("tabs") or 1)
+    # owner 24 Nov: every video also goes to Google Drive "Dileep Explains Meta Clips/<batch>" (GitHub's internet); R2 keeps a working copy
+    DBATCH = JOB["out"].rstrip("/").rsplit("/", 1)[-1]
+    def to_drive(data, iid):
+        if not os.environ.get("DRIVE_TOKEN"): return
+        try: import drive_io; drive_io.put(data, DBATCH, f"{iid}_1.mp4"); res["items"][iid]["drive"] = True
+        except Exception as e: print(iid, "drive retry later", type(e).__name__, flush=True)
     # owner 24 Nov: "use a few more tabs, tab-closing method; send ALL at once, then collect ALL at once" (Meta 3 only).
     # TABS tabs open together, each types its prompt, waits for its chat link, then the tab is CLOSED; next group of TABS.
     LIMIT_WORDS = ["limit", "try again later", "log in", "suspicious", "confirm"]
@@ -202,6 +208,7 @@ with sync_playwright() as p:
                         data = urllib.request.urlopen(urllib.request.Request(link, headers={"User-Agent": "Mozilla/5.0"}), timeout=120).read()
                         S3.put_object(Bucket=B, Key=JOB["out"] + f"{iid}_1.mp4", Body=data, ContentType="video/mp4")
                         res["items"][iid]["video"] = len(data); left.pop(iid); print(iid, "VIDEO", len(data) // 1000, "KB", flush=True)
+                        to_drive(data, iid)
                     except Exception as e: print(iid, "download retry", type(e).__name__, flush=True)
                 save_res()
         for iid in left: res["items"][iid]["video"] = "NOT READY in time"
@@ -239,7 +246,7 @@ with sync_playwright() as p:
                 if v:   # 3) direct download (no tunnel) -> R2
                     data = urllib.request.urlopen(urllib.request.Request(v[0], headers={"User-Agent": "Mozilla/5.0"}), timeout=120).read()
                     S3.put_object(Bucket=B, Key=JOB["out"] + f"{iid}_1.mp4", Body=data, ContentType="video/mp4")
-                    res["items"][iid]["video"] = len(data); left.pop(iid); print(iid, "VIDEO", len(data) // 1000, "KB", flush=True); save_res()
+                    res["items"][iid]["video"] = len(data); left.pop(iid); print(iid, "VIDEO", len(data) // 1000, "KB", flush=True); to_drive(data, iid); save_res()
             except Exception as e: print(iid, "collect retry", type(e).__name__, flush=True)
     for iid in left: res["items"][iid]["video"] = "NOT READY in time"
     res["tunnel"] = dict(stats); res["t1"] = time.strftime("%H:%M:%S"); res["done"] = True; save_res(); br.close()
