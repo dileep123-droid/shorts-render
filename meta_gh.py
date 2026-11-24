@@ -124,6 +124,90 @@ with sync_playwright() as p:
     for it in JOB["items"]:
         if it not in todo: res["items"][it["id"]] = {"send": "ALREADY IN R2", "video": "kept"}
     stop = False
+    TABS = int(JOB.get("tabs") or 1)
+    # owner 24 Nov: "use a few more tabs, tab-closing method; send ALL at once, then collect ALL at once" (Meta 3 only).
+    # TABS tabs open together, each types its prompt, waits for its chat link, then the tab is CLOSED; next group of TABS.
+    LIMIT_WORDS = ["limit", "try again later", "log in", "suspicious", "confirm"]
+    def send_group(group):
+        global stop
+        pages = []
+        for it in group:   # open + type in every tab of the group
+            pg = None
+            try:
+                pg = ctx.new_page(); pg.set_default_timeout(90000)
+                pg.goto("https://www.meta.ai/", wait_until="domcontentloaded", timeout=120000)
+                ed = pg.locator("[data-lexical-editor], [contenteditable='true']").first; ed.wait_for(state="visible", timeout=90000); time.sleep(1.5)
+                fl = [REFF[c] for c in it.get("chars", []) if c in REFF]
+                if fl: pg.locator("input[type=file]").first.set_input_files(fl); time.sleep(6 + 6 * len(fl))
+                ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(1); pg.keyboard.press("Enter")
+                pages.append((it, pg))
+            except Exception as e:
+                res["items"][it["id"]] = {"send": "NO PROMPT BOX / " + type(e).__name__, "chat": ""}; print(it["id"], "NO PROMPT BOX", flush=True)
+                if pg: shot(pg, it["id"] + "_nobox")
+                try: pg and pg.close()
+                except Exception: pass
+        for _ in range(45):   # wait until every tab has its chat link
+            if all(pg.url.rstrip("/") != "https://www.meta.ai" for _, pg in pages): break
+            time.sleep(1)
+        for it, pg in pages:
+            url = pg.url if pg.url.rstrip("/") != "https://www.meta.ai" else None
+            if url: chats[it["id"]] = url; st = "SENT"
+            else:
+                st = "NOT SENT"; shot(pg, it["id"] + "_notsent")
+                try: body = pg.evaluate("()=>(document.querySelector('main')||document.body).innerText.slice(-300)").lower()
+                except Exception: body = ""
+                if any(k in body for k in LIMIT_WORDS): st = "NOT SENT (limit/login/check)"; stop = True
+            res["items"][it["id"]] = {"send": st, "chat": chats.get(it["id"], "")}; print(it["id"], st.split(" (")[0], flush=True)
+            try: pg.close()   # tab-closing method: the tab is closed as soon as its prompt is sent
+            except Exception: pass
+        save_res()
+    if TABS > 1:
+        for attempt in (1, 2):
+            for i in range(0, len(todo), TABS):
+                send_group(todo[i:i + TABS])
+                if stop: print("STOPPING: Meta limit/login/check page", flush=True); break
+            again = [it for it in todo if str(res["items"].get(it["id"], {}).get("send", "")).startswith("NO PROMPT BOX")]
+            if stop or not again: break
+            todo = again; print("second try for", len(again), flush=True)
+        print("all sent:", len(chats), flush=True)
+        deadline = time.time() + 60 * JOB.get("wait_min", 15); left = dict(chats)
+        while left and time.time() < deadline:   # collect ALL at once: TABS chat tabs together, read the video link, close
+            time.sleep(45)
+            ids = list(left)
+            for i in range(0, len(ids), TABS):
+                grp = []
+                for iid in ids[i:i + TABS]:
+                    pg = None
+                    try:
+                        pg = ctx.new_page(); pg.set_default_timeout(90000); pg.goto(left[iid], wait_until="domcontentloaded", timeout=120000); grp.append((iid, pg))
+                    except Exception as e:
+                        print(iid, "collect retry", type(e).__name__, flush=True)
+                        try: pg and pg.close()
+                        except Exception: pass
+                got = {}
+                for _ in range(20):
+                    for iid, pg in grp:
+                        if iid in got: continue
+                        try:
+                            v = pg.evaluate("()=>[...document.querySelectorAll('main video')].map(e=>e.currentSrc||e.src||(e.querySelector('source')||{}).src).filter(x=>x && /fbcdn|scontent/.test(x))")
+                            if v: got[iid] = v[0]
+                        except Exception: pass
+                    if len(got) == len(grp): break
+                    time.sleep(1)
+                for iid, pg in grp:
+                    try: pg.close()
+                    except Exception: pass
+                for iid, link in got.items():   # direct download (no tunnel) -> R2
+                    try:
+                        data = urllib.request.urlopen(urllib.request.Request(link, headers={"User-Agent": "Mozilla/5.0"}), timeout=120).read()
+                        S3.put_object(Bucket=B, Key=JOB["out"] + f"{iid}_1.mp4", Body=data, ContentType="video/mp4")
+                        res["items"][iid]["video"] = len(data); left.pop(iid); print(iid, "VIDEO", len(data) // 1000, "KB", flush=True)
+                    except Exception as e: print(iid, "download retry", type(e).__name__, flush=True)
+                save_res()
+        for iid in left: res["items"][iid]["video"] = "NOT READY in time"
+        res["tunnel"] = dict(stats); res["t1"] = time.strftime("%H:%M:%S"); res["done"] = True; save_res(); br.close()
+        print("tunnel connections", stats, "| videos", sum(1 for x in res["items"].values() if isinstance(x.get("video"), int)), "of", len(JOB["items"]))
+        sys.exit(0)
     for attempt in (1, 2):
         again = []
         for it in todo:
