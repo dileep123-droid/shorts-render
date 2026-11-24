@@ -17,19 +17,48 @@ def _q(q):
     u = "https://www.googleapis.com/drive/v3/files?" + urllib.parse.urlencode({"q": q, "fields": "files(id,name,size)", "pageSize": 1000})
     return json.load(_api(u)).get("files", [])
 def folder(path):   # "a/b" -> id, created if missing
+    path = path.strip("/")
     if path in _fid: return _fid[path]
-    pid = "root"
-    for nm in path.strip("/").split("/"):
-        f = _q(f"name='{nm}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{pid}' in parents")
+    pid = "root"; parts = path.split("/")
+    for i, nm in enumerate(parts):
+        pre = "/".join(parts[:i + 1])
+        if pre in _fid: pid = _fid[pre]; continue
+        qn = nm.replace("\\", "\\\\").replace("'", "\\'")
+        f = _q(f"name='{qn}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '{pid}' in parents")
         if f: pid = f[0]["id"]
         else:
             pid = json.load(_api("https://www.googleapis.com/drive/v3/files", "POST",
                                  json.dumps({"name": nm, "mimeType": "application/vnd.google-apps.folder", "parents": [pid]}).encode(),
                                  {"Content-Type": "application/json"}))["id"]
-    _fid[path] = pid; return pid
+        _fid[pre] = pid
+    return pid
 def listing(batch):   # name -> size of the files already in the batch folder
     pid = folder(f"{ROOT}/{batch}")
     return {x["name"]: int(x.get("size", -1)) for x in _q(f"'{pid}' in parents and trashed=false")}
+def children(pid):   # name -> size of files in a folder (all pages)
+    out, tok = {}, None
+    while True:
+        u = "https://www.googleapis.com/drive/v3/files?" + urllib.parse.urlencode(dict(
+            {"q": f"'{pid}' in parents and trashed=false", "fields": "nextPageToken,files(name,size)", "pageSize": 1000}, **({"pageToken": tok} if tok else {})))
+        r = json.load(_api(u)); out.update({x["name"]: int(x.get("size", -1)) for x in r.get("files", [])}); tok = r.get("nextPageToken")
+        if not tok: return out
+def put_file(path, pid, name, mime="application/octet-stream"):   # chunked resumable upload of a local file (big masters)
+    size = os.path.getsize(path)
+    r = _api("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,size", "POST",
+             json.dumps({"name": name, "parents": [pid]}).encode(),
+             {"Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Type": mime, "X-Upload-Content-Length": str(size)})
+    loc = r.headers["Location"]; CH = 64 << 20; pos = 0
+    with open(path, "rb") as f:
+        while pos < size or size == 0:
+            blk = f.read(CH); end = pos + len(blk) - 1
+            req = urllib.request.Request(loc, data=blk, method="PUT", headers={"Content-Range": f"bytes {pos}-{end}/{size}" if size else "bytes */0"})
+            try:
+                out = json.load(urllib.request.urlopen(req, timeout=600)); break
+            except urllib.error.HTTPError as e:
+                if e.code != 308: raise
+            pos = end + 1
+    assert int(out.get("size", 0)) == size, "Drive size mismatch"
+    return size
 def put(data, batch, name):   # resumable upload of bytes; returns Drive size
     pid = folder(f"{ROOT}/{batch}")
     r = _api("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,size", "POST",
