@@ -1,0 +1,39 @@
+name: cinekit-photo-fetch
+
+run-name: photos ${{ inputs.spec }}
+
+# cinekit PHOTO FETCH: freely licensed images only (Wikimedia Commons: PD / CC0 / CC BY / CC BY-SA), with author + licence + source URL.
+# Input  = R2 key of a query JSON under s2work/cinekit/specs/ (made on the laptop, e.g. longform/ic814/photo_queries_ic814.json).
+# Output = R2 s2work/cinekit/photos/<name>/<query id>_<n>.jpg + manifest.json + CREDITS.txt. No artifacts; nothing private in the log.
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec: { description: 'R2 key of the query JSON, e.g. s2work/cinekit/specs/photo_queries_ic814.json', required: true }
+      per:  { description: 'max images kept per query (a query can override with "max")', required: false, default: '4' }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  SPEC: ${{ inputs.spec }}
+  PER: ${{ inputs.per }}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: cinekit } }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: fetch
+        run: |
+          case "$SPEC" in s2work/cinekit/specs/*.json) ;; *) echo "spec must be s2work/cinekit/specs/*.json"; exit 1;; esac
+          case "$PER" in ''|*[!0-9]*) echo "bad per"; exit 1;; esac
+          pip install -q requests boto3
+          python r2io.py get "$SPEC" queries.json
+          python -u photo_fetch.py queries.json --per "$PER"
