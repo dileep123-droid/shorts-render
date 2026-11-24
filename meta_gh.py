@@ -17,7 +17,8 @@ B = "eduorbex-media"
 def r2json(k): return json.loads(S3.get_object(Bucket=B, Key=k)["Body"].read())
 EP = r2json("s2work/meta_tunnel/endpoint.json")            # {"url": "wss://...trycloudflare.com/<secret>"}
 JOB = r2json(sys.argv[1])                                   # {"out": "<r2 prefix>/", "items": [{"id","prompt"}], "wait_min": 15}
-STATE = "/tmp/meta_state.json"; open(STATE, "wb").write(S3.get_object(Bucket=B, Key="s2work/meta_tunnel/session.json")["Body"].read())
+# 24 Nov: "session" = which Meta account (R2 key): session.json = Meta 3, session_1.json = Meta 1, session_2.json = Meta 2
+STATE = "/tmp/meta_state.json"; open(STATE, "wb").write(S3.get_object(Bucket=B, Key=JOB.get("session") or "s2work/meta_tunnel/session.json")["Body"].read())
 stats = {"conn": 0, "fail": 0}
 
 # ---------- 1) SOCKS5 -> WebSocket tunnel ----------
