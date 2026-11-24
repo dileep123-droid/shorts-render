@@ -121,15 +121,23 @@ with sync_playwright() as p:
             if main.url.rstrip("/") != "https://www.meta.ai": return main.url
         return None
     todo = [it for it in JOB["items"] if not in_r2(it["id"])]
+    if JOB.get("collect"):   # owner 24 Nov: collect-only run - open already-sent chats, no new prompts
+        for iid, url in JOB["collect"].items():
+            if not in_r2(iid): chats[iid] = url; res["items"][iid] = {"send": "SENT EARLIER", "chat": url}
+        todo = []; print("collect only:", len(chats), "chats", flush=True)
     for it in JOB["items"]:
         if it not in todo: res["items"][it["id"]] = {"send": "ALREADY IN R2", "video": "kept"}
     stop = False
     TABS = int(JOB.get("tabs") or 1)
     # owner 24 Nov: every video also goes to Google Drive "Dileep Explains Meta Clips/<batch>" (GitHub's internet); R2 keeps a working copy
-    DBATCH = JOB["out"].rstrip("/").rsplit("/", 1)[-1]
+    DBATCH = JOB["out"].rstrip("/").rsplit("/", 1)[-1]; DHAVE = {}
     def to_drive(data, iid):
         if not os.environ.get("DRIVE_TOKEN"): return
-        try: import drive_io; drive_io.put(data, DBATCH, f"{iid}_1.mp4"); res["items"][iid]["drive"] = True
+        try:
+            import drive_io
+            if "have" not in DHAVE: DHAVE["have"] = drive_io.listing(DBATCH)
+            if DHAVE["have"].get(f"{iid}_1.mp4") != len(data): drive_io.put(data, DBATCH, f"{iid}_1.mp4")
+            res["items"][iid]["drive"] = True
         except Exception as e: print(iid, "drive retry later", type(e).__name__, flush=True)
     # owner 24 Nov: "use a few more tabs, tab-closing method; send ALL at once, then collect ALL at once" (Meta 3 only).
     # TABS tabs open together, each types its prompt, waits for its chat link, then the tab is CLOSED; next group of TABS.
