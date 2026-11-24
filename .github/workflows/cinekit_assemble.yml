@@ -1,0 +1,129 @@
+name: cinekit-assemble
+
+run-name: assemble ${{ inputs.episode }}
+
+# LONG-VIDEO EPISODE ASSEMBLER (cinekit/assemble/assemble_episode.py). STAGED 24 Nov, not pushed: the owner pushes.
+# Input  = R2 s2work/cinekit/assemble/<episode>/plan.json (made + staged on the laptop: assemble_episode.py plan, r2io_assemble.py stage)
+# Output = R2 s2work/cinekit/assemble/<episode>/<episode>_master.mp4 (+ _720.mp4)
+# Jobs: setup (reads the chunk list) -> chunk xN in parallel (video only) + mix (whole-timeline audio) -> concat (copy-join + mux).
+# Reads only s2work/ (clips, kit_meta elements, sfx, cinekit renders); writes only s2work/cinekit/assemble/. Uses the repo's CF_R2_* secrets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      episode: { description: 'episode name (a-z0-9_-), e.g. ic814_te', required: true }
+      chunks:  { description: 'only these chunk numbers, e.g. 0,3 (empty = all)', required: false, default: '' }
+      parallel: { description: 'max chunks rendered at once', required: false, default: '8' }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  EP: ${{ inputs.episode }}
+  ASM_ASSETS: assets
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    defaults: { run: { working-directory: cinekit/assemble } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - id: m
+        env: { ONLY: '${{ inputs.chunks }}' }
+        run: |
+          case "$EP" in *[!A-Za-z0-9_-]*|'') echo "bad episode name"; exit 1;; esac
+          case "$ONLY" in *[!0-9,]*) echo "bad chunk list"; exit 1;; esac
+          pip install -q boto3
+          python r2io_assemble.py get "s2work/cinekit/assemble/$EP/plan.json" plan.json
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          P = json.load(open("plan.json")); only = [int(x) for x in os.environ.get("ONLY", "").split(",") if x.strip()]
+          ks = [c["k"] for c in P["chunks"] if not only or c["k"] in only]
+          print("matrix=" + json.dumps({"k": ks}))
+          PY
+
+  chunk:
+    needs: setup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(inputs.parallel) }}
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    defaults: { run: { working-directory: cinekit/assemble } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: tools
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg fonts-noto-core fonts-noto-extra > /dev/null
+          pip install -q boto3 numpy
+          ffmpeg -hide_banner -filters 2>/dev/null | grep -E ' (xfade|ass|blend|alimiter|colortemperature|colorhold|rgbashift|swaprect|drawgrid|geq) ' | awk '{print $2}' | tr '\n' ' '
+      - name: render chunk ${{ matrix.k }}
+        run: |
+          python r2io_assemble.py get "s2work/cinekit/assemble/$EP/plan.json" plan.json
+          python r2io_assemble.py fetch-chunk plan.json ${{ matrix.k }}
+          T0=$(date +%s)
+          python assemble_episode.py chunk plan.json ${{ matrix.k }}
+          echo "CHUNK_SECONDS $(( $(date +%s) - T0 ))"
+          K=$(printf '%03d' ${{ matrix.k }})
+          python r2io_assemble.py put "chunks/c$K.mp4" "s2work/cinekit/assemble/$EP/chunks/c$K.mp4"
+
+  mix:
+    needs: setup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults: { run: { working-directory: cinekit/assemble } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: mix
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg > /dev/null
+          pip install -q boto3 numpy
+          python r2io_assemble.py get "s2work/cinekit/assemble/$EP/plan.json" plan.json
+          python - <<'PY'
+          import json, subprocess
+          P = json.load(open("plan.json")); keys = [P["audio"]["voice"]] + [b["src"] for b in P["audio"]["music"]]
+          json.dump({"assets": keys}, open("audio_assets.json", "w"))
+          PY
+          python r2io_assemble.py fetch audio_assets.json
+          python assemble_episode.py mix plan.json
+          python r2io_assemble.py put mix.wav "s2work/cinekit/assemble/$EP/mix.wav"
+
+  concat:
+    needs: [chunk, mix]
+    if: ${{ inputs.chunks == '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults: { run: { working-directory: cinekit/assemble } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: concat + mux
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg > /dev/null
+          pip install -q boto3 numpy
+          python r2io_assemble.py get "s2work/cinekit/assemble/$EP/plan.json" plan.json
+          python r2io_assemble.py get "s2work/cinekit/assemble/$EP/mix.wav" mix.wav
+          mkdir -p chunks
+          python - <<'PY'
+          import json, subprocess, os
+          P = json.load(open("plan.json")); ep = os.environ["EP"]
+          for c in P["chunks"]:
+              k = f"c{c['k']:03d}.mp4"
+              subprocess.run(["python", "r2io_assemble.py", "get", f"s2work/cinekit/assemble/{ep}/chunks/{k}", f"chunks/{k}"], check=True)
+          PY
+          python assemble_episode.py concat plan.json
+          E=$(python -c "import json;print(json.load(open('plan.json'))['episode'])")
+          python r2io_assemble.py put "${E}_master.mp4" "s2work/cinekit/assemble/$EP/${EP}_master.mp4"
+          python r2io_assemble.py put "${E}_master_720.mp4" "s2work/cinekit/assemble/$EP/${EP}_master_720.mp4"
