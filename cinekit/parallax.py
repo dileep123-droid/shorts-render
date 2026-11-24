@@ -61,17 +61,41 @@ def ease(u):
 
 
 def camera(move, u):
-    """-> (tx, ty, zoom) with tx,ty in [-1,1] (lateral parallax) and zoom in [0,1] (dolly amount)."""
-    e = ease(u)
-    if move == "dolly_in":  return (0.35 * (e - 0.5), -0.15 * (e - 0.5), e)
-    if move == "dolly_out": return (-0.35 * (e - 0.5), 0.15 * (e - 0.5), 1 - e)
-    if move == "pan_right": return (2 * e - 1, 0.0, 0.25)
-    if move == "pan_left":  return (1 - 2 * e, 0.0, 0.25)
-    if move == "rise":      return (0.0, 1 - 2 * e, 0.3 + 0.4 * e)
+    """-> (tx, ty, zoom) with tx,ty in [-1,1] (lateral parallax) and zoom in [0,1] (dolly amount).
+    Mostly-linear easing so the camera is visibly moving on every frame (no dead start/end)."""
+    e = 0.4 * u + 0.6 * ease(u)
+    if move == "dolly_in":  return (e - 0.5, -0.3 * (e - 0.5), e)
+    if move == "dolly_out": return (0.5 - e, 0.3 * (e - 0.5), 1 - e)
+    if move == "pan_right": return (2 * e - 1, 0.0, 0.35 + 0.25 * e)
+    if move == "pan_left":  return (1 - 2 * e, 0.0, 0.35 + 0.25 * e)
+    if move == "rise":      return (0.3 * (e - 0.5), 1 - 2 * e, 0.3 + 0.6 * e)
     if move == "orbit":
         a = 2 * np.pi * u
-        return (np.sin(a), 0.45 * (1 - np.cos(a)) - 0.45, 0.35 + 0.15 * np.sin(a / 2))
+        return (np.sin(a), 0.5 * np.cos(a), 0.45 + 0.35 * e)
     raise ValueError(move)
+
+
+class Dust:
+    """Drifting dust motes / light specks with their own depth, so they parallax with the camera."""
+    def __init__(self, W, H, n, seed=7):
+        r = np.random.default_rng(seed)
+        self.W, self.H = W, H
+        self.x = r.uniform(0, W, n); self.y = r.uniform(0, H, n); self.z = r.uniform(0, 1, n) ** 1.6
+        self.vx = r.normal(0.012, 0.01, n) * W; self.vy = r.normal(-0.02, 0.012, n) * H   # per second
+        self.a = r.uniform(0.25, 0.7, n); self.ph = r.uniform(0, 2 * np.pi, n)
+
+    def layer(self, t, tx, ty, s, A, focus):
+        W, H = self.W, self.H; k = 2  # draw at half res
+        img = np.zeros((H // k, W // k), np.float32)
+        x = (self.x + self.vx * t + tx * A * 1.6 * (self.z - focus) - W / 2) * (1 + (s - 1) * (1 + self.z)) + W / 2
+        y = (self.y + self.vy * t + ty * A * 1.0 * (self.z - focus) - H / 2) * (1 + (s - 1) * (1 + self.z)) + H / 2
+        x %= W; y %= H
+        tw = 0.65 + 0.35 * np.sin(self.ph + t * 2.2)
+        for xi, yi, zi, ai, ti in zip(x, y, self.z, self.a, tw):
+            rad = max(1, int((0.8 + 3.2 * zi) * W / 1920 * 2.2 / k))
+            cv2.circle(img, (int(xi / k), int(yi / k)), rad, float(ai * ti * (0.5 + 0.5 * zi)), -1, cv2.LINE_AA)
+        img = cv2.GaussianBlur(img, (0, 0), 1.2 + 0.0015 * W)
+        return cv2.resize(img, (W, H), interpolation=cv2.INTER_LINEAR)
 
 
 # ---------------------------------------------------------------- main render
@@ -91,7 +115,7 @@ def render(a):
         W, H = int(w * k) // 2 * 2, int(h * k) // 2 * 2
     else:
         W, H = map(int, a.size.lower().split("x"))
-    OV = 1.0 + 0.06 * a.strength + 0.04  # overscan so edges never show
+    OV = 1.06 + 0.05 * a.strength  # overscan so edges never show
     can = cover_fit(bgr, W, H, OV)
     Hc, Wc = can.shape[:2]
     rgb = cv2.cvtColor(can, cv2.COLOR_BGR2RGB)
@@ -134,17 +158,26 @@ def render(a):
         depth = np.minimum(depth, d_fg)  # background never sits in front of the subject
 
     n = int(round(a.dur * a.fps))
-    A = a.strength * 0.035 * W          # lateral parallax amplitude (px at full depth range)
-    Z = a.strength * 0.07               # dolly amount
+    A = a.strength * 0.06 * W           # lateral parallax: near-vs-far layer offset ~6% of width over the move
+    ZG = a.strength * 0.15              # global push: scale 1.00 -> 1.15 ...
+    ZD = a.strength * 0.07              # ... plus up to +0.07 for the nearest depth (near ~1.22, far ~1.15)
     focus = a.focus
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     cx, cy = Wc / 2.0, Hc / 2.0
     px = xx - W / 2.0; py = yy - H / 2.0   # output pixel relative to center
 
+    def scale(zm, d):
+        return 1.0 + zm * (ZG + ZD * d)
+
     def src_coords(dmap, tx, ty, zm):
-        s = 1.0 + zm * Z * (0.35 + 0.65 * dmap)
+        s = scale(zm, dmap)
         sx = tx * A * (dmap - focus); sy = ty * A * 0.6 * (dmap - focus)
         return (cx + px / s - sx).astype(np.float32), (cy + py / s - sy).astype(np.float32)
+
+    dust = Dust(W, H, a.dust) if a.dust > 0 else None
+    dust_col = np.array([200, 228, 255], np.float32) / 255 * 255   # warm-white specks (BGR)
+    if a.light:
+        gy, gx = np.mgrid[0:H // 4, 0:W // 4].astype(np.float32)
 
     cmd = [a.ffmpeg, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(a.fps),
            "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", str(a.crf), "-pix_fmt", "yuv420p",
@@ -168,12 +201,24 @@ def render(a):
             out = cv2.remap(bg_u8, mx, my, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
             if fg_img is not None:
                 # subject = rigid "card" at its own depth: crisp, moves more than the background
-                s = 1.0 + zm * Z * (0.35 + 0.65 * d_fg) * a.fg_boost
+                s = 1.0 + zm * (ZG + ZD * d_fg * a.fg_boost)
                 sx = tx * A * (d_fg - focus) * a.fg_boost; sy = ty * A * 0.6 * (d_fg - focus) * a.fg_boost
                 M = np.float32([[s, 0, W / 2 - s * cx + s * sx], [0, s, H / 2 - s * cy + s * sy]])
                 fg = cv2.warpAffine(fg_img, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
                 al = cv2.warpAffine(fg_alpha, M, (W, H), flags=cv2.INTER_LINEAR)[..., None]
                 out = (fg.astype(np.float32) * al + out.astype(np.float32) * (1 - al) + 0.5).astype(np.uint8)
+            if dust is not None or a.light:
+                o = out.astype(np.float32); t = f / a.fps
+                if a.light:   # slow drifting warm glow (light leak), screen-blended
+                    u = f / max(1, n - 1)
+                    lx, ly = (0.15 + 0.7 * u) * W / 4, (0.25 + 0.1 * np.sin(u * np.pi)) * H / 4
+                    g = np.exp(-(((gx - lx) ** 2 + (gy - ly) ** 2) / (2 * (0.28 * W / 4) ** 2))) * a.light
+                    g = cv2.resize(g, (W, H))[..., None] * np.array([120, 190, 255], np.float32)
+                    o = 255 - (255 - o) * (255 - g) / 255
+                if dust is not None:
+                    lay = dust.layer(t, tx, ty, scale(zm, 0.5), A, focus)[..., None] * a.dust_alpha
+                    o = o + lay * (dust_col - o * 0.6)
+                out = np.clip(o + 0.5, 0, 255).astype(np.uint8)
             ff.stdin.write(out.tobytes())
     finally:
         ff.stdin.close(); ff.wait()
@@ -198,6 +243,9 @@ def main():
     ap.add_argument("--fg-boost", type=float, default=1.3, help="extra subject motion (cut-out mode)")
     ap.add_argument("--mask-model", default="birefnet-general-lite", help="rembg model (birefnet-portrait for people)")
     ap.add_argument("--depth-model", default=None, help="path to a Depth-Anything-V2-Small ONNX (default: download)")
+    ap.add_argument("--dust", type=int, default=70, help="number of drifting dust/light specks (0 = off)")
+    ap.add_argument("--dust-alpha", type=float, default=0.55, dest="dust_alpha")
+    ap.add_argument("--light", type=float, default=0.18, help="drifting warm light-leak strength (0 = off)")
     ap.add_argument("--save-depth", default=None)
     ap.add_argument("--crf", type=int, default=17)
     ap.add_argument("--ffmpeg", default=os.environ.get("CINEKIT_FFMPEG", FFMPEG_DEFAULT))
