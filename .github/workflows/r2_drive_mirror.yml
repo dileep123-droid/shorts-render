@@ -1,0 +1,42 @@
+name: r2-drive-mirror
+
+run-name: r2 to drive ${{ inputs.list }}
+
+# Owner 24 Nov 2026: R2 s2work -> Google Drive "BuBu TV Archive/R2/..." on GitHub's internet. Nothing is deleted from R2.
+# Exact copies are sent once; files already in Drive (same size) are skipped. Only counts are printed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      list: { description: 'R2 key of the file list (_transfer/*.json)', required: true }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  DRIVE_TOKEN: ${{ secrets.DRIVE_TOKEN }}
+  LIST: ${{ inputs.list }}
+
+jobs:
+  folders:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q boto3
+      - run: python r2_drive_mirror.py folders "$LIST"
+  copy:
+    needs: folders
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix: { shard: [0, 1, 2, 3, 4, 5, 6, 7] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q boto3
+      - run: python r2_drive_mirror.py copy "$LIST" ${{ matrix.shard }} 8
