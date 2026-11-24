@@ -1,0 +1,54 @@
+name: cinekit-map
+
+run-name: map ${{ inputs.spec }} (${{ inputs.formats }})
+
+# cinekit MAP FLY-TO renderer (MapLibre GL JS + OpenFreeMap tiles in headless Chromium, CPU/SwiftShader).
+# Input  = R2 key of a map JSON spec under s2work/cinekit/ (made on the laptop; see E:/mb_builds/tools/cinekit/README.md).
+# Output = R2 s2work/cinekit/maps/<spec name>_<9x16|16x9>.mp4. No artifacts; nothing private in the log.
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec:    { description: 'R2 key of the map JSON, e.g. s2work/cinekit/specs/ic814.json', required: true }
+      formats: { description: 'both | vertical | horizontal', required: false, default: 'both' }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  SPEC: ${{ inputs.spec }}
+  FORMATS: ${{ inputs.formats }}
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: cinekit } }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: tools
+        run: |
+          case "$SPEC" in s2work/cinekit/*.json) ;; *) echo "spec must be s2work/cinekit/*.json"; exit 1;; esac
+          case "$FORMATS" in both|vertical|horizontal) ;; *) echo "bad formats"; exit 1;; esac
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg fonts-noto-core > /dev/null
+          npm ci --no-audit --no-fund
+          pip install -q playwright==1.60.0 boto3
+          python -m playwright install --with-deps chromium-headless-shell > /dev/null || python -m playwright install --with-deps chromium > /dev/null
+
+      - name: render
+        run: |
+          NAME=$(basename "$SPEC" .json)
+          case "$NAME" in *[!A-Za-z0-9_-]*|'') echo "bad spec name"; exit 1;; esac
+          python r2io.py get "$SPEC" spec.json
+          mkdir -p out
+          T0=$(date +%s)
+          python -u make_map.py spec.json --out "out/$NAME" --format "$FORMATS"
+          echo "TOTAL_RENDER_SECONDS $(( $(date +%s) - T0 ))"
+          for f in out/*.mp4; do python r2io.py put "$f" "s2work/cinekit/maps/$(basename "$f")"; done
