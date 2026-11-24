@@ -1,0 +1,10 @@
+{
+  "title": "IC-814 <span>·</span> 24-31 DEC 1999",
+  "points": [
+    {"name": "Kathmandu", "lat": 27.6966, "lon": 85.3591, "label": "Hijacked after take-off"},
+    {"name": "Amritsar",  "lat": 31.7096, "lon": 74.7973, "label": "45 min on the tarmac", "km": "auto"},
+    {"name": "Lahore",    "lat": 31.5216, "lon": 74.4036, "label": "Refuelled", "km": "auto"},
+    {"name": "Dubai",     "lat": 25.2532, "lon": 55.3657, "label": "27 hostages freed", "km": "auto"},
+    {"name": "Kandahar",  "lat": 31.5058, "lon": 65.8478, "label": "Taliban-held airport", "km": "auto"}
+  ]
+}
