@@ -1,0 +1,253 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/vendor/maplibre-gl.css">
+<script src="/vendor/maplibre-gl.js"></script>
+<style>
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#07090d; }
+  * { animation: none !important; transition: none !important; }
+  #map { position:absolute; inset:0; }
+  #ov { position:absolute; inset:0; pointer-events:none; overflow:hidden;
+        font-family: "Segoe UI", "Noto Sans", "Liberation Sans", "Arial", sans-serif; }
+  .vig { position:absolute; inset:0; pointer-events:none;
+         background: radial-gradient(ellipse at 50% 48%, rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%); }
+  .dot { position:absolute; width:0; height:0; }
+  .dot .core { position:absolute; left:-6px; top:-6px; width:12px; height:12px; border-radius:50%;
+               background:var(--accent); box-shadow:0 0 10px 3px var(--accentGlow); border:2px solid #fff; box-sizing:border-box; }
+  .dot .ring { position:absolute; left:-10px; top:-10px; width:20px; height:20px; border-radius:50%;
+               border:2px solid var(--accent); box-sizing:border-box; }
+  .lab { position:absolute; white-space:nowrap; }
+  .lab .nm { font-weight:800; font-size:var(--fsName); letter-spacing:.06em; text-transform:uppercase; color:#fff;
+             text-shadow:0 2px 6px rgba(0,0,0,.9), 0 0 2px #000; line-height:1.05; }
+  .lab .sub { display:inline-block; margin-top:3px; font-weight:700; font-size:var(--fsSub); color:#111;
+              background:var(--accent); padding:2px 7px; border-radius:4px; letter-spacing:.02em; }
+  .km { position:absolute; white-space:nowrap; font-weight:800; font-size:var(--fsKm); color:var(--accent);
+        background:rgba(8,10,14,.78); border:1.5px solid var(--accent); border-radius:999px; padding:2px 10px;
+        letter-spacing:.05em; transform:translate(-50%,-50%); }
+  .plane { position:absolute; width:26px; height:26px; left:-13px; top:-13px; }
+  .title { position:absolute; left:0; right:0; text-align:center; color:#fff; font-weight:800;
+           font-size:var(--fsTitle); letter-spacing:.08em; text-transform:uppercase;
+           text-shadow:0 2px 10px rgba(0,0,0,.95); }
+  .title span { color:var(--accent); }
+  .credit { position:absolute; right:8px; bottom:6px; font-size:9px; color:rgba(255,255,255,.55);
+            text-shadow:0 1px 2px #000; }
+  .maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display:none !important; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="ov"><div class="vig"></div></div>
+<script>
+// ---------- helpers ----------
+const R = Math.PI/180;
+function toV(lon,lat){ const a=lat*R,b=lon*R; return [Math.cos(a)*Math.cos(b), Math.cos(a)*Math.sin(b), Math.sin(a)]; }
+function toLL(v){ return [Math.atan2(v[1],v[0])/R, Math.atan2(v[2],Math.hypot(v[0],v[1]))/R]; }
+function slerpPts(p,q,n){
+  const a=toV(p[0],p[1]), b=toV(q[0],q[1]);
+  const d=Math.acos(Math.min(1,Math.max(-1,a[0]*b[0]+a[1]*b[1]+a[2]*b[2])));
+  const out=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n;
+    if(d<1e-9){ out.push([p[0],p[1]]); continue; }
+    const s1=Math.sin((1-t)*d)/Math.sin(d), s2=Math.sin(t*d)/Math.sin(d);
+    out.push(toLL([a[0]*s1+b[0]*s2, a[1]*s1+b[1]*s2, a[2]*s1+b[2]*s2]));
+  }
+  return out;
+}
+function hav(p,q){ const dLat=(q[1]-p[1])*R, dLon=(q[0]-p[0])*R;
+  const h=Math.sin(dLat/2)**2+Math.cos(p[1]*R)*Math.cos(q[1]*R)*Math.sin(dLon/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); }
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const easeOut = t => 1-Math.pow(1-t,3);
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function arcAt(arc,t){ // point along polyline arc by fraction t
+  const n=arc.length-1, f=clamp(t,0,1)*n, i=Math.min(n-1,Math.floor(f)), r=f-i;
+  return [arc[i][0]+(arc[i+1][0]-arc[i][0])*r, arc[i][1]+(arc[i+1][1]-arc[i][1])*r];
+}
+function arcSlice(arc,t){ const n=arc.length-1, f=clamp(t,0,1)*n, i=Math.floor(f);
+  const out=arc.slice(0,i+1); if(f>i && i<n) out.push(arcAt(arc,t)); return out; }
+
+// ---------- build ----------
+window.setupMap = async function(cfg){
+  const S = cfg.scale;             // css-px multiplier for overlay sizing
+  const root=document.documentElement.style;
+  root.setProperty('--accent', cfg.accent); root.setProperty('--accentGlow', cfg.accent+'aa');
+  root.setProperty('--fsName', (22*S)+'px'); root.setProperty('--fsSub', (12*S)+'px');
+  root.setProperty('--fsKm', (13*S)+'px'); root.setProperty('--fsTitle', (20*S)+'px');
+
+  // ---- style: start from OpenFreeMap 'dark', recolour for a cinematic look ----
+  const st = await (await fetch(cfg.style_url)).json();
+  const keep = new Set(['background','water','boundary_state','boundary_country_z0-4','boundary_country_z5-',
+                        'place_country_other','place_country_minor','place_country_major','waterway','landcover_ice_shelf','landcover_glacier']);
+  if(cfg.city_names) ['place_city','place_city_large','place_town'].forEach(x=>keep.add(x));
+  st.layers = st.layers.filter(l=>keep.has(l.id));
+  for(const l of st.layers){
+    l.paint = l.paint||{};
+    if(l.id==='background') l.paint['background-color']=cfg.land;
+    if(l.id==='water'){ l.paint['fill-color']=cfg.water; l.paint['fill-opacity']=1; }
+    if(l.id==='waterway'){ l.paint['line-color']=cfg.water; }
+    if(l.id.startsWith('landcover')){ l.paint['fill-color']='#2a2f36'; l.paint['fill-opacity']=0.5; }
+    if(l.id.startsWith('boundary_country')){ l.paint['line-color']=cfg.border; l.paint['line-opacity']=0.85;
+       l.paint['line-width']=['interpolate',['linear'],['zoom'],2,0.8,6,1.6,10,2.2]; delete l.paint['line-dasharray']; }
+    if(l.id==='boundary_state'){ l.paint['line-color']=cfg.border; l.paint['line-opacity']=0.18; }
+    if(l.type==='symbol'){ l.paint['text-color']= l.id.startsWith('place_country') ? 'rgba(220,225,232,0.55)' : 'rgba(220,225,232,0.75)';
+       l.paint['text-halo-color']='rgba(0,0,0,0.8)'; l.paint['text-halo-width']=1.2;
+       l.layout=l.layout||{}; l.layout['text-transform']='uppercase'; l.layout['text-letter-spacing']=0.2; }
+  }
+  // shaded-relief raster (Natural Earth, served by OpenFreeMap) under the water for an earthy terrain feel
+  if(cfg.relief && st.sources.ne2_shaded){
+    st.layers.splice(1,0,{id:'relief',type:'raster',source:'ne2_shaded',
+      paint:{'raster-opacity':cfg.relief_opacity,'raster-saturation':-0.55,'raster-brightness-max':0.62,'raster-contrast':0.15,'raster-fade-duration':0}});
+  }
+  // country glow (wide blurred copy of borders)
+  const bIdx = st.layers.findIndex(l=>l.id==='boundary_country_z5-');
+  st.layers.splice(bIdx>0?bIdx:st.layers.length,0,{id:'border_glow',type:'line',source:'openmaptiles','source-layer':'boundary',
+     filter:['all',['==',['get','admin_level'],2],['!=',['get','maritime'],1]],
+     paint:{'line-color':cfg.border,'line-width':6,'line-blur':5,'line-opacity':0.25}});
+
+  const map = new maplibregl.Map({container:'map', style:st, center:[cfg.points[0].lon,cfg.points[0].lat],
+     zoom:cfg.stop_zoom, pitch:cfg.pitch, bearing:0, attributionControl:false, interactive:false,
+     fadeDuration:0, preserveDrawingBuffer:true, maxTileCacheSize:2000, pixelRatio: window.devicePixelRatio});
+  window.map = map;
+  await new Promise(r=>map.on('load',r));
+
+  // ---- geometry ----
+  const P = cfg.points.map(p=>[p.lon,p.lat]);
+  const legs=[];
+  for(let i=0;i<P.length-1;i++){
+    const d=hav(P[i],P[i+1]);
+    const arc=slerpPts(P[i],P[i+1], Math.max(16, Math.round(d/15)));
+    let km = cfg.points[i+1].km; if(km==='auto' || km===true) km=Math.round(d/10)*10;
+    const dur = cfg.leg_sec*clamp(Math.sqrt(d/1200),0.55,1.4);
+    const fit = map.cameraForBounds([[Math.min(P[i][0],P[i+1][0]),Math.min(P[i][1],P[i+1][1])],
+                                     [Math.max(P[i][0],P[i+1][0]),Math.max(P[i][1],P[i+1][1])]],
+                                     {padding:cfg.fit_padding});
+    legs.push({arc,d,km,dur,zMid:Math.min(cfg.stop_zoom, fit.zoom-0.15)});
+  }
+  let allB=[[Infinity,Infinity],[-Infinity,-Infinity]];
+  P.forEach(p=>{allB[0][0]=Math.min(allB[0][0],p[0]);allB[0][1]=Math.min(allB[0][1],p[1]);allB[1][0]=Math.max(allB[1][0],p[0]);allB[1][1]=Math.max(allB[1][1],p[1]);});
+  const fitAll = map.cameraForBounds(allB,{padding:cfg.fit_padding});
+
+  // ---- timeline ----
+  const segs=[]; let t0=0;
+  segs.push({k:'intro',t0,dur:cfg.intro_sec}); t0+=cfg.intro_sec;
+  legs.forEach((L,i)=>{ segs.push({k:'leg',i,t0,dur:L.dur}); t0+=L.dur;
+                        segs.push({k:'hold',i,t0,dur:cfg.hold_sec}); t0+=cfg.hold_sec; });
+  if(cfg.outro_sec>0){ segs.push({k:'outro',t0,dur:cfg.outro_sec}); t0+=cfg.outro_sec; }
+  const total=t0;
+  const arrive=[0]; legs.forEach((L,i)=>{ const s=segs.find(x=>x.k==='leg'&&x.i===i); arrive.push(s.t0+s.dur); });
+  const legStart = legs.map((L,i)=>segs.find(x=>x.k==='leg'&&x.i===i).t0);
+
+  // ---- route layers ----
+  map.addSource('route',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addLayer({id:'route_glow',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},
+                paint:{'line-color':cfg.accent,'line-width':10*S,'line-blur':8*S,'line-opacity':0.35}});
+  map.addLayer({id:'route',type:'line',source:'route',layout:{'line-cap':'butt','line-join':'round'},
+                paint:{'line-color':cfg.route_color,'line-width':2.6*S,'line-dasharray':[2.2,1.6]}});
+
+  // ---- overlays ----
+  const ov=document.getElementById('ov');
+  const mk=(cls,html)=>{const e=document.createElement('div'); e.className=cls; if(html) e.innerHTML=html; ov.appendChild(e); return e;};
+  // label side: away from nearest neighbour, unless set in JSON
+  const side = cfg.points.map((p,i)=>{
+    if(p.side) return p.side;
+    let best=null,bd=1e9; P.forEach((q,j)=>{ if(j===i) return; const d=hav(P[i],q); if(d<bd){bd=d;best=q;} });
+    if(best && bd < cfg.close_km) return best[1] < P[i][1] ? 'top' : 'bottom';   // near-twins: stack labels
+    return (best && best[0] < P[i][0]) ? 'right' : 'left';
+  });
+  const dots = cfg.points.map(()=>{ const e=mk('dot'); e.innerHTML='<div class="ring"></div><div class="ring"></div><div class="core"></div>'; return e; });
+  const labs = cfg.points.map(p=>mk('lab', `<div class="nm">${p.name}</div>`+(p.label?`<div class="sub">${p.label}</div>`:'')));
+  const kms = legs.map(()=>mk('km'));
+  const plane = mk('plane', `<svg viewBox="0 0 24 24" width="${26*S}" height="${26*S}" style="position:absolute;left:${13-13*S}px;top:${13-13*S}px;filter:drop-shadow(0 0 4px rgba(0,0,0,.9))"><path fill="#fff" d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>`);
+  let title=null; if(cfg.title){ title=mk('title', cfg.title); title.style.top = (cfg.title_top*100)+'%'; }
+  if(cfg.credit) mk('credit', cfg.credit).style.fontSize=(9*S)+'px';
+
+  const W=()=>window.innerWidth, H=()=>window.innerHeight;
+  const fps=cfg.fps; const nFrames=Math.round(total*fps);
+
+  function camAt(t){
+    const s = segs.find(x=>t>=x.t0 && t<x.t0+x.dur) || segs[segs.length-1];
+    const u = clamp((t-s.t0)/s.dur,0,1);
+    const bearing = cfg.bearing_drift*(t/total-0.5);
+    if(s.k==='intro') return {c:P[0], z:cfg.stop_zoom-0.35+0.35*easeOut(u), b:bearing, prog:0, legI:-1};
+    if(s.k==='leg'){ const L=legs[s.i], e=ease(u);
+      const z = cfg.stop_zoom + (L.zMid-cfg.stop_zoom)*Math.sin(Math.PI*e);
+      return {c:arcAt(L.arc,e), z, b:bearing, prog:s.i+e, legI:s.i, legE:e}; }
+    if(s.k==='hold') return {c:P[s.i+1], z:cfg.stop_zoom+0.12*easeOut(u), b:bearing, prog:s.i+1, legI:-1};
+    // outro: pull back to show the full route
+    const e=ease(u), last=P[P.length-1];
+    return {c:[last[0]+(fitAll.center.lng-last[0])*e, last[1]+(fitAll.center.lat-last[1])*e],
+            z:cfg.stop_zoom+0.12+(Math.min(fitAll.zoom-0.1,cfg.stop_zoom)-cfg.stop_zoom-0.12)*e, b:bearing, prog:legs.length, legI:-1};
+  }
+
+  function waitIdle(){
+    return new Promise(res=>{
+      const start=performance.now();
+      const check=()=>{
+        if((map.loaded() && map.areTilesLoaded() && !map.isMoving()) || performance.now()-start>cfg.frame_timeout_ms){
+          requestAnimationFrame(()=>requestAnimationFrame(()=>res(performance.now()-start)));
+        } else setTimeout(check,25);
+      };
+      map.triggerRepaint(); setTimeout(check,20);
+    });
+  }
+
+  window.renderFrame = async function(f){
+    const t=f/fps, cam=camAt(t);
+    map.jumpTo({center:cam.c, zoom:cam.z, bearing:cam.b, pitch:cfg.pitch});
+    // route geometry
+    const feats=[];
+    for(let i=0;i<legs.length;i++){
+      const pr=clamp(cam.prog-i,0,1); if(pr<=0) break;
+      const co=arcSlice(legs[i].arc,pr); if(co.length>1) feats.push({type:'Feature',geometry:{type:'LineString',coordinates:co}});
+    }
+    map.getSource('route').setData({type:'FeatureCollection',features:feats});
+    const waited = await waitIdle();
+    // overlays (positions after camera settles)
+    cfg.points.forEach((p,i)=>{
+      const xy = map.project([p.lon,p.lat]);
+      const onScreen = xy.x>-20*S && xy.x<W()+20*S && xy.y>-20*S && xy.y<H()+20*S;
+      const a = onScreen ? clamp((t-arrive[i])/0.3,0,1) : 0;
+      // once the route has moved on, older stops keep only their name, slightly dimmed
+      const old = clamp((cam.prog-i-1)*2,0,1);
+      const d=dots[i], l=labs[i];
+      const sub=l.querySelector('.sub'); if(sub) sub.style.display = old>=1 ? 'none' : '';
+      l.style.transformOrigin = side[i]==='right' ? 'left center' : side[i]==='left' ? 'right center' : 'center';
+      l.style.transform = `scale(${1-0.22*old})`;
+      d.style.opacity=a; d.style.left=xy.x+'px'; d.style.top=xy.y+'px';
+      const latest = (i===Math.min(Math.floor(cam.prog+1e-6),cfg.points.length-1));
+      const rings=d.querySelectorAll('.ring');
+      rings.forEach((r,k)=>{ const ph=((t-arrive[i])*(latest?0.9:0.5)+k*0.5)%1; const sc=1+ph*(latest?2.6:1.6);
+         r.style.transform=`scale(${sc*S})`; r.style.opacity = t<arrive[i]?0:(1-ph)*(latest?0.9:0.45); });
+      d.querySelector('.core').style.transform=`scale(${S*(1+0.25*Math.max(0,1-(t-arrive[i])/0.35)*(t>=arrive[i]?1:0))})`;
+      l.style.opacity=a*(1-0.35*old);
+      const gap=14*S, w=l.offsetWidth, h=l.offsetHeight;
+      let x = side[i]==='right' ? xy.x+gap : xy.x-gap-w, y = xy.y-h*0.42;
+      if(side[i]==='top'){ x=xy.x-w/2; y=xy.y-gap-h; } if(side[i]==='bottom'){ x=xy.x-w/2; y=xy.y+gap; }
+      const m=10*S; x=clamp(x,m,W()-w-m); y=clamp(y,m,H()-h-m);
+      l.style.left=x+'px'; l.style.top=(y + (1-a)*8*S)+'px';
+    });
+    legs.forEach((L,i)=>{
+      const e=kms[i]; const pr=clamp(cam.prog-i,0,1);
+      if(L.km==null || L.km===false || pr<=0.12){ e.style.opacity=0; return; }
+      const mid=arcAt(L.arc,0.5), xy=map.project(mid);
+      const cnt=Math.round(L.km*clamp((pr-0.12)/0.75,0,1));
+      e.textContent = (typeof L.km==='number') ? (cnt.toLocaleString('en-US')+' KM') : String(L.km);
+      e.style.opacity=clamp((pr-0.12)/0.15,0,1)*(1-clamp((t-arrive[i+1]-cfg.km_linger)/0.4,0,1));
+      e.style.left=xy.x+'px'; e.style.top=(xy.y-16*S)+'px';
+    });
+    if(cfg.plane && cam.legI>=0){
+      const L=legs[cam.legI], h=arcAt(L.arc,cam.legE), h2=arcAt(L.arc,Math.min(1,cam.legE+0.01));
+      const a=map.project(h), b=map.project(h2); const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI+90;
+      plane.style.opacity=clamp(Math.min(cam.legE,1-cam.legE)/0.06,0,1);
+      plane.style.left=a.x+'px'; plane.style.top=a.y+'px'; plane.style.transform=`rotate(${ang}deg)`;
+    } else plane.style.opacity=0;
+    if(title) title.style.opacity=clamp(t/0.4,0,1);
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    return waited;
+  };
+  return {nFrames, total};
+};
+</script>
+</body>
+</html>
