@@ -1,0 +1,46 @@
+name: cinekit-parallax
+
+run-name: parallax ${{ inputs.image }} -> ${{ inputs.name }}
+
+# cinekit 2.5D PHOTO PARALLAX (Depth-Anything-V2-Small ONNX + rembg/BiRefNet + OpenCV warp), CPU only.
+# Input  = R2 key of a still under s2work/cinekit/ ; Output = R2 s2work/cinekit/parallax/<name>.mp4
+
+on:
+  workflow_dispatch:
+    inputs:
+      image: { description: 'R2 key of the still, e.g. s2work/cinekit/stills/meta_s01_c1.jpg', required: true }
+      name:  { description: 'output name (a-z0-9_-)', required: true }
+      args:  { description: 'parallax.py flags, e.g. --size 1080x1920 --move dolly_in --cutout', required: false, default: '--size 1080x1920 --dur 5 --move dolly_in' }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  IMAGE: ${{ inputs.image }}
+  NAME: ${{ inputs.name }}
+  ARGS: ${{ inputs.args }}
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: cinekit } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: tools
+        run: |
+          case "$IMAGE" in s2work/cinekit/*) ;; *) echo "image must be under s2work/cinekit/"; exit 1;; esac
+          case "$NAME" in *[!A-Za-z0-9_-]*|'') echo "bad name"; exit 1;; esac
+          case "$ARGS" in *[\;\&\|\`\$\<\>]*) echo "bad args"; exit 1;; esac
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg > /dev/null
+          pip install -q "rembg[cpu]==2.0.87" onnxruntime==1.20.1 opencv-python-headless==4.10.0.84 numpy huggingface_hub boto3
+      - name: render
+        run: |
+          python r2io.py get "$IMAGE" in_img
+          mkdir -p out
+          T0=$(date +%s)
+          python -u parallax.py in_img --out "out/$NAME.mp4" $ARGS 2>&1 | grep -v '%|'
+          echo "TOTAL_RENDER_SECONDS $(( $(date +%s) - T0 ))"
+          python r2io.py put "out/$NAME.mp4" "s2work/cinekit/parallax/$NAME.mp4"
