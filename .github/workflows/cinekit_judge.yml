@@ -13,6 +13,7 @@ on:
       tag:   { description: 'result tag (a-z0-9_-)', required: true }
       plan:  { description: 'R2 key of plan.json under s2work/cinekit/judge_tmp/', required: false, default: 's2work/cinekit/judge_tmp/plan.json' }
       tool:  { description: 'judge | reel', required: false, default: 'judge' }
+      only:  { description: 'only these candidate ids (comma list, empty = all)', required: false, default: '' }
 
 env:
   CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
@@ -23,6 +24,7 @@ env:
   TAG: ${{ inputs.tag }}
   PLAN: ${{ inputs.plan }}
   TOOL: ${{ inputs.tool }}
+  ONLY: ${{ inputs.only }}
   PYTHONUNBUFFERED: '1'
 
 jobs:
@@ -39,6 +41,7 @@ jobs:
           case "$TAG" in *[!A-Za-z0-9_-]*|'') echo "bad tag"; exit 1;; esac
           case "$PLAN" in s2work/cinekit/judge_tmp/*.json) ;; *) echo "plan must be under s2work/cinekit/judge_tmp/"; exit 1;; esac
           case "$TOOL" in judge|reel) ;; *) echo "bad tool"; exit 1;; esac
+          case "$ONLY" in *[!0-9,]*) echo "bad only"; exit 1;; esac
           sudo apt-get update -q && sudo apt-get install -y -q ffmpeg fonts-dejavu-core > /dev/null
           pip install -q numpy pillow boto3
       - name: run
