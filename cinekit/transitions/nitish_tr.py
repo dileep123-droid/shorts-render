@@ -223,26 +223,34 @@ def flashbang(A, B, fps, **kw):
 
 def rgbimpact(A, B, fps, echo=True, **kw):
     """T6 exposure-blip + RGB impact cut [GT fd_glitch]: on A ~0.2 s before the cut 2 f @60 blown out (warm), then 2-4 f normal;
-    hard cut; 2 f darker; 2-4 f blown-out RGB split ~10-15 px + scanlines + magenta/cyan fringe, decaying over ~6 f into B;
-    B carries echo trails (frame blending). Impact + glitch crackle."""
-    na = f60(12, fps); blip = f60(2, fps); dark = f60(2, fps); split = f60(4, fps); decay = f60(6, fps); tail = f60(12, fps)
+    hard cut; 2 f darker; 2-4 f BLOWN-OUT RGB split ~10-15 px + scanlines + magenta/cyan fringe (near white), decaying over ~6 f
+    into a desaturated, glowing B that carries echo trails (frame blending). Impact + glitch crackle."""
+    na = f60(12, fps); blip = f60(2, fps); dark = f60(2, fps); split = f60(4, fps); decay = f60(8, fps); tail = f60(12, fps)
     out = []
     for i in range(na):
         out.append(_exposure(A[i], 1.9, warm=0.12) if i < blip else A[i])
-    c = na; acc = None
-    for j in range(dark + split + decay + tail):
+    c = na; acc = None; n = dark + split + decay + tail
+    for j in range(n):
         b = B[c + j].astype(np.float32)
-        if echo:
-            acc = b if acc is None else acc * 0.55 + b * 0.45
-            b = b * 0.6 + acc * 0.4
-        b = b.clip(0, 255).astype(np.uint8)
-        if j < dark: b = _exposure(b, 0.55)
+        if echo:   # echo trails: running blend of past frames
+            acc = b if acc is None else acc * 0.7 + b * 0.3
+            b = b * 0.45 + acc * 0.55
+        g = b.mean(2, keepdims=True); b = g + (b - g) * 0.45            # desaturated impact look
+        glow = _blur(b.clip(0, 255).astype(np.uint8), _px(A[0], 18)).astype(np.float32)
+        if j < dark:
+            k = 0.0; b = b * 0.55
         elif j < dark + split:
-            b = _scanlines(_rgb_split(_exposure(b, 1.35), _px(b, 13)), 3, 0.35)
-        elif j < dark + split + decay:
-            k = 1 - (j - dark - split + 1) / (decay + 1)
-            b = _scanlines(_rgb_split(_exposure(b, 1 + 0.35 * k), _px(b, 13) * k), 3, 0.35 * k)
-        out.append(b)
+            k = 1.0
+        else:
+            k = max(0.0, 1 - (j - dark - split + 1) / (decay + 1)) ** 1.5
+        lift = 0.55 * k
+        x = 255 - (255 - b) * (255 - glow * (0.6 + 1.4 * k)) / 255     # screen with its own glow (bloom)
+        x = x * (1 - lift) + 255 * lift
+        x[..., 0] += 25 * k; x[..., 2] += 30 * k; x[..., 1] -= 10 * k  # magenta tint while blown
+        xi = x.clip(0, 255).astype(np.uint8)
+        if k > 0.05:
+            xi = _scanlines(_rgb_split(xi, _px(xi, 14) * k + 2), 3, 0.3 * k)
+        out.append(xi)
     return np.stack(out)
 
 
@@ -322,22 +330,30 @@ def _layers(img, n=3):
     return masks   # masks[k] = everything at depth >= layer k (layer 0 = whole frame)
 
 
-def parallaxpush(A, B, fps, direction=-1, speeds=(0.75, 1.0, 1.35), **kw):
-    """T9 parallax cut-out push [GT fd_104718]: A's layers move together right->left at different speeds (foreground fastest),
-    B's layers enter from the right the same way; ~30 f @60, ease-out. Whoosh."""
+def _shift(img, dx, border=cv2.BORDER_CONSTANT):
+    return _affine(img, dx=dx, border=border)
+
+
+def parallaxpush(A, B, fps, direction=-1, **kw):
+    """T9 parallax cut-out push [GT fd_104718]: A's layers slide out right->left together at different speeds (foreground cut-out
+    fastest), B's background is revealed behind with a slight drift and B's subject (near layer) enters from the right edge;
+    ~30 f @60, ease-out, with motion blur on the moving layers. Whoosh."""
     L = f60(30, fps); h, w = A.shape[1:3]
-    la, lb = _layers(A[0]), _layers(B[min(len(B) - 1, L)])
-    out = []
+    la = _layers(A[0]); lb = _layers(B[min(len(B) - 1, L)])
+    ones = np.ones((h, w), np.float32)
+    out = []; prev = 0.0
     for i in range(L):
-        e = _ease_io((i + 1) / L)
-        frame = np.zeros((h, w, 3), np.float32)
-        for k, sp in enumerate(speeds):
-            # A layer k exits, B layer k enters; each layer is drawn over the farther ones
-            dxa = direction * w * e * sp; dxb = direction * w * (e - 1) * sp
-            for img, m, dx in ((A[i], la[k], dxa), (B[i], lb[k], dxb)):
-                ii = _affine(img, dx=dx, border=cv2.BORDER_CONSTANT).astype(np.float32)
-                mm = _affine((m * 255).astype(np.uint8), dx=dx, border=cv2.BORDER_CONSTANT).astype(np.float32)[..., None] / 255
-                frame = frame * (1 - mm) + ii * mm
+        e = _ease_out((i + 1) / L, 3); v = (e - prev) * w; prev = e
+        mb = min(_px(A[0], 40), v * 0.35)                               # motion blur ~ per-frame speed
+        def lay(img, m, dx):
+            ii = _hblur(_shift(img, dx), mb * abs(dx) / max(1, abs(dx) + 1)).astype(np.float32)
+            mm = _hblur((_shift((m * 255).astype(np.uint8), dx)), mb).astype(np.float32)[..., None] / 255
+            return ii, mm
+        frame = _shift(B[i], direction * -0.18 * w * (1 - e), cv2.BORDER_REFLECT).astype(np.float32)   # B background drifts in slowly
+        for img, m, dx in ((A[i], ones, direction * w * 1.0 * e), (A[i], la[1], direction * w * 1.15 * e),
+                           (B[i], lb[2], direction * -w * 0.85 * (1 - e)), (A[i], la[2], direction * w * 1.35 * e)):
+            ii, mm = lay(img, m, dx)
+            frame = frame * (1 - mm) + ii * mm
         out.append(frame.clip(0, 255).astype(np.uint8))
     return np.stack(out)
 
@@ -400,7 +416,7 @@ def gridsnake(A, B, fps, cols=4, rows=3, **kw):
     return np.stack(out)
 
 
-def inkburn(A, B, fps, origin=(0.62, 0.45), edge="char", seed=11, **kw):
+def inkburn(A, B, fps, origin=(0.62, 0.45), edge="paper", seed=11, **kw):
     """T18 ink-bleed / burn-hole matte from the subject [GT do_98463, eli_95630]: an organic mask grows from the point that matters
     (map pin, envelope), slow then accelerating, filling in ~24-30 f @60; irregular edge with a charred dark rim (edge='char')
     or a thin light paper fringe (edge='paper'). Paper/burn whoosh."""
@@ -500,7 +516,7 @@ def length(name, fps=30):
     if name == "cut": return 1
     return {"zoomout": f60(22, fps), "mirrorzoom": f60(4, fps) + f60(10, fps), "white": f60(6, fps),
             "flashbang": f60(4, fps) + f60(30, fps) + f60(4, fps),
-            "rgbimpact": f60(12, fps) + f60(2, fps) + f60(4, fps) + f60(6, fps) + f60(12, fps),
+            "rgbimpact": f60(12, fps) + f60(2, fps) + f60(4, fps) + f60(8, fps) + f60(12, fps),
             "sliceglitch": f60(8, fps) + f60(4, fps) + f60(12, fps), "parallaxpush": f60(30, fps),
             "defocuspush": f60(8, fps) + f60(6, fps), "dissolvemotion": f60(22, fps), "bloom": f60(12, fps) + f60(20, fps),
             "inkburn": f60(28, fps), "xreveal": f60(30, fps), "spire": f60(24, fps)}[name]
