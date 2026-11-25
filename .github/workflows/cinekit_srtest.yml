@@ -1,0 +1,37 @@
+name: cinekit-srtest
+
+run-name: srtest ${{ inputs.prefix }}
+
+# Shorts renderer test (25 Nov): renders one finished Short's inputs with shorts_render.py in SR_LOCAL mode, before vs after a
+# change (old path must stay frame-identical) and with the new "tr" Shorts transitions. Reads job inputs read-only from R2;
+# writes only under the given s2work/cinekit/srtest/ prefix. No production keys are touched.
+
+on:
+  workflow_dispatch:
+    inputs:
+      prefix: { description: 'R2 prefix, e.g. s2work/cinekit/srtest/', required: false, default: 's2work/cinekit/srtest/' }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  PFX: ${{ inputs.prefix }}
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: tools
+        run: |
+          case "$PFX" in s2work/cinekit/srtest/*) ;; *) echo "prefix must be under s2work/cinekit/srtest/"; exit 1;; esac
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg fonts-liberation > /dev/null
+          pip install -q boto3 pillow numpy
+          ffmpeg -hide_banner -filters 2>/dev/null | grep -E ' (dblur|fillborders|swaprect|rgbashift|drawgrid|gblur|acrusher) ' | awk '{print $2}' | tr '\n' ' '
+      - name: test
+        run: |
+          mkdir -p t && cd t && python -u ../cinekit/srtest/srtest.py "$PFX"
