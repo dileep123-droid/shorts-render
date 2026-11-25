@@ -167,7 +167,9 @@ def main():
     ap.add_argument("--threads", type=int, default=4)
     a = ap.parse_args()
     P = json.load(open(a.plan, encoding="utf-8")); out = Path(a.out); (out / "dl").mkdir(parents=True, exist_ok=True)
-    project = os.environ["VERTEX_PROJECT"]; model = P["model"]
+    project = os.environ.get("VERTEX_PROJECT", "")
+    only = [int(x) for x in os.environ.get("ONLY", "").split(",") if x.strip()]
+    if only: P["cands"] = [c for c in P["cands"] if c["id"] in only and (c.get("rep", 0) == 0 or c.get("control"))]; model = P["model"]
     spec = P["spec"]; N = spec["fps"] * spec["seconds"]
     ca = get(spec["clip_a"], str(out / "dl" / "clip_a.mp4")); cb = get(spec["clip_b"], str(out / "dl" / "clip_b.mp4"))
     A = decode(ca, N, 0.5); B = decode(cb, N, 0.3)
@@ -176,6 +178,9 @@ def main():
         png = get(f"{TMP}gt/{r['sheet']}_sheet.png", str(out / "dl" / f"{r['sheet']}.png"))
         fr = sheet_frames(png, r.get("frames"))
         refimg[code] = tile(fr, cols=6, title=f"REFERENCE {code} (Nitish Rajput, 30 fps)")
+        rp_ = out / f"ref_{code}.png"; refimg[code].save(rp_)
+        try: put(str(rp_), f"{TMP}strips/{rp_.name}")
+        except Exception as e: print("ref upload", type(e).__name__)
     results = []; spent = 0.0
 
     def one(c):
@@ -191,6 +196,10 @@ def main():
         parts = [{"inlineData": {"mimeType": "image/png", "data": png_b64(refimg[c["ref"]])}},
                  {"inlineData": {"mimeType": "image/png", "data": png_b64(cimg)}}, {"text": prompt}]
         tag = f"{c['id']:03d}_{c['ref']}_r{c.get('rep', 0)}"
+        if c.get("rep", 0) == 0:   # keep the candidate strip (small PNG) so the laptop can look without extracting frames
+            sp = out / f"strip_{c['id']:03d}.png"; cimg.save(sp)
+            try: put(str(sp), f"{TMP}strips/{sp.name}")
+            except Exception as e: print("strip upload", type(e).__name__)
         try:
             j, rec = vertex(parts, model, project, tag, out)
         except Exception as e:
