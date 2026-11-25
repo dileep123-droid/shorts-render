@@ -75,6 +75,15 @@ def main():
     for jb in B["jobs"]:
         t0 = time.time(); name = jb["name"]; rec = {"name": name, "tool": jb["tool"]}
         try:
+            if jb["tool"] == "strip":   # contact sheet of the frames around given times (check transitions without touching the laptop)
+                v = get(jb["video"], str(work / Path(jb["video"]).name)); rows = []
+                for t in jb["times"]:
+                    o = work / f"{name}_{t}.png"
+                    subprocess.run([FF, "-v", "error", "-y", "-ss", f"{max(0, t - 0.1):.3f}", "-i", v, "-frames:v", "1", "-vf",
+                                    "fps=30,scale=160:-2,tile=12x1:padding=2",
+                                    str(o)], check=True); rows.append(o)
+                subprocess.run([FF, "-v", "error", "-y"] + sum([["-i", str(r)] for r in rows], []) + ["-filter_complex", "".join(f"[{i}:v]" for i in range(len(rows))) + f"vstack=inputs={len(rows)}", str(work / f"{name}.png")], check=True)
+                put(str(work / f"{name}.png"), out + f"{name}.png", out); rec["status"] = "ok"; report.append(rec); print("DEMO", json.dumps(rec), flush=True); continue
             if jb["tool"] == "timeline":
                 plate = get(jb["plate"], str(work / ("plate_" + Path(jb["plate"]).name))) if jb.get("plate") else None
                 cmd = [sys.executable, str(HERE / "timeline" / "timeline.py"), str(HERE / jb["spec"]), "--out", str(work / name),
