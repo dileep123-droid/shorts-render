@@ -11,8 +11,9 @@ Modes (all CPU, numpy/OpenCV backward warps with float transforms, so there is n
 
   python photo_motion.py in.jpg --out out.mp4 [--mode cutout] [--size 1080x1920] [--dur 5] [--next b.jpg]
 Each run also writes <out>.motion.json: per-frame motion measured with optical flow (px/frame at the output width).
-Pass mark (25 Nov, calibrated with Gemini's "does it look like a still?" check): after the 0.4 s ease-in the slowest 10 % of frames
-still move >= 1.0 px/frame and the clip moves >= 15 % of the width in total. v1 (0.5 px/frame median, 3-7 % total) read as a still.
+Flag "pass" = camera motion only (after the 0.4 s ease-in the slowest 10 % of frames move >= 1.0 px/frame and the clip moves
+>= 15 % of the width in total). It is NOT calibrated against Gemini's still-check: v2 clips Gemini called "not a still" (push,
+presenter cut-out, coast Ken Burns) still flag false, and a photo of a frozen FACE reads as a still however the camera moves.
 """
 import argparse, json, math, os, subprocess, sys
 from pathlib import Path
