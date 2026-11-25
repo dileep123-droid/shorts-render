@@ -153,24 +153,24 @@ def whipsmear(A, B, fps, direction=1, **kw):
 def whipsmear_len(fps): return 4 if fps >= 50 else 3
 
 
-def crashout(A, B, fps, roll=1.5, start_scale=2.0, blur=20, **kw):
+def crashout(A, B, fps, roll=1.5, start_scale=2.7, blur=18, **kw):
     """T2 presenter blur crash-out [GT eli_punch]: hard cut to B at ~200% + Gaussian blur ~20 px, ease-out (cubic) to 100% / 0 px
     in 16-20 f @60, with a +-1-2 deg roll that settles. His signature return to the presenter."""
     L = crashout_len(fps); out = []
     for i in range(L):
-        u = i / (L - 1); e = 1 - _ease_out(u, 3)
+        u = i / (L - 1); e = 1 - _ease_out(u, 2.2)                         # extreme close-up -> medium in ~6 f @30
         img = _affine(B[i], scale=1 + (start_scale - 1) * e, rot=roll * e)
-        out.append(_blur(img, _px(img, blur) * e ** 0.7))
+        out.append(_zoom_blur(_blur(img, _px(img, blur) * e), 0.10 * e))
     return np.stack(out)
-def crashout_len(fps): return f60(18, fps)
+def crashout_len(fps): return f60(12, fps)
 
 
-def zoomout(A, B, fps, start_scale=1.6, **kw):
+def zoomout(A, B, fps, start_scale=2.2, **kw):
     """T13 zoom-out reveal [GT do_3425]: B starts tight on a detail, eases out to context in 0.3-0.4 s (no blur)"""
-    L = f60(22, fps); out = []
+    L = f60(14, fps); out = []
     for i in range(L):
-        e = 1 - _ease_out(i / (L - 1), 3)
-        out.append(_affine(B[i], scale=1 + (start_scale - 1) * e))
+        e = 1 - _ease_out(i / (L - 1), 2.5)
+        out.append(_zoom_blur(_affine(B[i], scale=1 + (start_scale - 1) * e), 0.08 * e))
     return np.stack(out)
 
 
@@ -243,13 +243,13 @@ def rgbimpact(A, B, fps, echo=True, **kw):
             k = 1.0
         else:
             k = max(0.0, 1 - (j - dark - split + 1) / (decay + 1)) ** 1.5
-        lift = 0.55 * k
+        lift = 0.32 * k
         x = 255 - (255 - b) * (255 - glow * (0.6 + 1.4 * k)) / 255     # screen with its own glow (bloom)
         x = x * (1 - lift) + 255 * lift
         x[..., 0] += 25 * k; x[..., 2] += 30 * k; x[..., 1] -= 10 * k  # magenta tint while blown
         xi = x.clip(0, 255).astype(np.uint8)
         if k > 0.05:
-            xi = _scanlines(_rgb_split(xi, _px(xi, 14) * k + 2), 3, 0.3 * k)
+            xi = _scanlines(_rgb_split(xi, _px(xi, 20) * k + 3), 2, 0.45 * k)
         out.append(xi)
     return np.stack(out)
 
@@ -258,7 +258,7 @@ def sliceglitch(A, B, fps, seed=3, **kw):
     """T7 horizontal slice / datamosh glitch [GT do_hglitch, eli_62475]: 8-20 horizontal bands shifted 2-15% of width with RGB
     fringe, in bursts of 8-11 f @60; heavy blocky datamosh bridging the cut (12-14 f @60) that resolves into B. Glitch/static SFX."""
     rng = np.random.default_rng(seed)
-    burst, gap, bridge = f60(8, fps), f60(4, fps), f60(12, fps)
+    burst, gap, bridge = f60(8, fps), f60(2, fps), f60(6, fps)
     out = []
     for i in range(burst):
         out.append(_bands(A[i], rng))
@@ -514,10 +514,10 @@ def length(name, fps=30):
     if name == "cutblack": return int(round(0.8 * fps))
     if name == "teaserstop": return f60(6, fps) * 2 + f60(2, fps) + int(round(1.8 * fps))
     if name == "cut": return 1
-    return {"zoomout": f60(22, fps), "mirrorzoom": f60(4, fps) + f60(10, fps), "white": f60(6, fps),
+    return {"zoomout": f60(14, fps), "mirrorzoom": f60(4, fps) + f60(10, fps), "white": f60(6, fps),
             "flashbang": f60(4, fps) + f60(30, fps) + f60(4, fps),
             "rgbimpact": f60(12, fps) + f60(2, fps) + f60(4, fps) + f60(8, fps) + f60(12, fps),
-            "sliceglitch": f60(8, fps) + f60(4, fps) + f60(12, fps), "parallaxpush": f60(30, fps),
+            "sliceglitch": f60(8, fps) + f60(2, fps) + f60(6, fps), "parallaxpush": f60(30, fps),
             "defocuspush": f60(8, fps) + f60(6, fps), "dissolvemotion": f60(22, fps), "bloom": f60(12, fps) + f60(20, fps),
             "inkburn": f60(28, fps), "xreveal": f60(30, fps), "spire": f60(24, fps)}[name]
 
