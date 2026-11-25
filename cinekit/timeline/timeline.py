@@ -80,7 +80,18 @@ def frame(S, W, H, t, vertical):
     sc = W / 1920 if not vertical else H / 1920 * 1.55   # phone: bigger type on 9:16
     ev = S["events"]; n = len(ev); cur = S.get("current"); dur = S["dur"]
     acc, past, fut = hexc(S.get("accent", "#ffc928")), hexc(S.get("past", "#ffffff")), hexc(S.get("future", "#7c8694"), 200)
-    im = Image.new("RGBA", (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    # contrast band behind the timeline (fades in with the draw-on): readable over any plate
+    band = np.zeros((H, W, 4), np.uint8); va = min(1.0, t / 0.4)
+    if vertical:
+        gx = np.clip(1 - np.abs(np.arange(W, dtype=np.float32) - W * 0.38) / (W * 0.40), 0, 1) ** 0.7
+        band[..., 3] = (gx[None, :] * 175 * va).astype(np.uint8)
+    else:
+        yc = H * (0.83 if S.get("position", "bottom") == "bottom" else 0.55)
+        gy = np.clip(1 - np.abs(np.arange(H, dtype=np.float32) - yc) / (H * 0.17), 0, 1) ** 0.7
+        band[..., 3] = (gy[:, None] * 175 * va).astype(np.uint8)
+    band[..., :3] = (8, 10, 14)
+    im = Image.alpha_composite(im, Image.fromarray(band)); d = ImageDraw.Draw(im)
     # geometry: line from P0 to P1, event k at fraction fk
     if vertical:
         x = int(W * 0.18); y0, y1 = int(H * 0.16), int(H * 0.86); P = lambda f: (x, y0 + (y1 - y0) * f)
