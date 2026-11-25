@@ -1,0 +1,39 @@
+name: shorts-assemble
+
+run-name: ${{ inputs.short }} (${{ inputs.prefix }}) assemble
+
+# Dileep Explains SPLIT design (owner 25 Nov: "lip-sync on GPU, join on CPU"): the face circles + align.json + join.json were made on a
+# Kaggle GPU (gh_lipsync_kernel2.py) and are already in R2 <prefix>/<short>/face/. ONE CPU runner does the normal assembly
+# (shorts_render.py assemble: clips, captions, transitions, music, voice) -> R2. Same code as the assemble job of shorts_chunked.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      short:  { description: 'job name in R2', required: true }
+      prefix: { description: 'R2 work prefix under s2work/shorts1/ (gh_test or gh_prod)', required: false, default: 'gh_test' }
+
+concurrency: { group: "assemble-${{ inputs.short }}", cancel-in-progress: false }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  JOB_PREFIX: ${{ inputs.prefix }}
+  SHORT: ${{ inputs.short }}
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.10' }
+      - name: tools
+        run: |
+          case "$SHORT" in *[!a-z0-9_]*|'') echo "bad short name"; exit 1;; esac
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg fonts-liberation > /dev/null
+          pip install -q uv
+          uv pip install -q --system boto3 pillow numpy==1.26.4
+      - name: assemble the Short
+        run: python shorts_render.py "$SHORT" assemble
