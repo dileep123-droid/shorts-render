@@ -169,7 +169,8 @@ def main():
     P = json.load(open(a.plan, encoding="utf-8")); out = Path(a.out); (out / "dl").mkdir(parents=True, exist_ok=True)
     project = os.environ.get("VERTEX_PROJECT", "")
     only = [int(x) for x in os.environ.get("ONLY", "").split(",") if x.strip()]
-    if only: P["cands"] = [c for c in P["cands"] if c["id"] in only and (c.get("rep", 0) == 0 or c.get("control"))]; model = P["model"]
+    if only: P["cands"] = [c for c in P["cands"] if c["id"] in only and (c.get("rep", 0) == 0 or c.get("control"))]
+    model = P["model"]
     spec = P["spec"]; N = spec["fps"] * spec["seconds"]
     ca = get(spec["clip_a"], str(out / "dl" / "clip_a.mp4")); cb = get(spec["clip_b"], str(out / "dl" / "clip_b.mp4"))
     A = decode(ca, N, 0.5); B = decode(cb, N, 0.3)
