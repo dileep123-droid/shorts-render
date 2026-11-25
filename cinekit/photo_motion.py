@@ -11,8 +11,8 @@ Modes (all CPU, numpy/OpenCV backward warps with float transforms, so there is n
 
   python photo_motion.py in.jpg --out out.mp4 [--mode cutout] [--size 1080x1920] [--dur 5] [--next b.jpg]
 Each run also writes <out>.motion.json: per-frame motion measured with optical flow (px/frame at the output width).
-Rule used as the pass mark: the slowest frame still moves >= 0.6 px/frame and the clip moves >= 8 % of the width in total
-(a still that "looks frozen" measured ~0.1-0.3 px/frame in the v1 parallax sample).
+Pass mark (25 Nov, calibrated with Gemini's "does it look like a still?" check): after the 0.4 s ease-in the slowest 10 % of frames
+still move >= 1.0 px/frame and the clip moves >= 15 % of the width in total. v1 (0.5 px/frame median, 3-7 % total) read as a still.
 """
 import argparse, json, math, os, subprocess, sys
 from pathlib import Path
@@ -60,13 +60,22 @@ class Dust:
         return (fr.astype(np.float32) + ov * np.array([255, 236, 200], np.float32)).clip(0, 255).astype(np.uint8)
 
 
+def hand(t, W):
+    """slow handheld wander (~3 px at 1080 w) on top of the move: a real camera is never perfectly smooth"""
+    k = W / 1080
+    return (k * (2.2 * math.sin(2 * math.pi * 0.37 * t) + 1.1 * math.sin(2 * math.pi * 0.91 * t + 1)),
+            k * (1.8 * math.sin(2 * math.pi * 0.29 * t + 2) + 0.9 * math.sin(2 * math.pi * 0.77 * t)))
+
+
 def kenburns(img, W, H, n, fps, a):
     d = Dust(W, H, a.dust); out = []
-    s0, s1 = 1.0, 1.0 + 0.20 * a.strength; dx1 = 0.045 * W * a.strength * a.dir; dy1 = -0.02 * H * a.strength; r1 = 1.2 * a.strength * a.dir
+    # 25 Nov v2: Gemini + optical flow said v1 (push 1.20, drift 4.5 %) still read as a frozen still -> much bigger, clearly moving
+    s0, s1 = 1.0, 1.0 + 0.38 * a.strength; dx1 = 0.14 * W * a.strength * a.dir; dy1 = -0.04 * H * a.strength; r1 = 2.2 * a.strength * a.dir
     base = cover(img, W, H, 1.3)
     for i in range(n):
         u = lin(i / (n - 1)); sc = (s0 + (s1 - s0) * u) * 1.03   # 3 % margin for the roll
-        fr = warp(base, W, H, sc, dx1 * u, dy1 * u, r1 * u)
+        wx, wy = hand(i / fps, W)
+        fr = warp(base, W, H, sc, dx1 * u + wx, dy1 * u + wy, r1 * u)
         out.append(d.draw(fr, i / fps, dx1 * u, sc) if a.dust else fr)
     return out
 
@@ -87,8 +96,9 @@ def cutout(img, W, H, n, fps, a):
     for i in range(n):
         u = lin(i / (n - 1))
         # background: slow pull the other way; subject: pushes in and drifts (layer separation ~10 % of width over the clip)
-        b = warp(bg, W, H, 1.06 + 0.05 * S * u, -0.04 * W * S * u * a.dir, 0, -0.4 * S * u * a.dir)
-        fsc = (1.0 + 0.16 * S * u); fdx = 0.06 * W * S * u * a.dir; fdy = -0.015 * H * S * u
+        wx, wy = hand(i / fps, W)
+        b = warp(bg, W, H, 1.08 + 0.14 * S * u, -0.10 * W * S * u * a.dir + wx, wy, -0.8 * S * u * a.dir)
+        fsc = (1.0 + 0.32 * S * u); fdx = 0.12 * W * S * u * a.dir + wx * 1.4; fdy = -0.03 * H * S * u + wy * 1.4
         f = warp(big, W, H, fsc, fdx, fdy, 0.6 * S * u * a.dir)
         fm = warp((m * 255).astype(np.uint8), W, H, fsc, fdx, fdy, 0.6 * S * u * a.dir).astype(np.float32)[..., None] / 255
         sd = warp((sh * 255).astype(np.uint8), W, H, fsc, fdx + 18 * W / 1080, fdy + 26 * W / 1080, 0.6 * S * u * a.dir).astype(np.float32)[..., None] / 255
@@ -103,8 +113,9 @@ def cutout(img, W, H, n, fps, a):
 
 def depth(img, W, H, n, fps, a, src):
     tmp = str(Path(a.out).with_suffix(".depth.mp4"))
+    import shutil
     subprocess.run([sys.executable, str(HERE / "parallax.py"), src, "--out", tmp, "--size", f"{W}x{H}", "--dur", str(a.dur), "--fps", str(fps),
-                    "--move", a.move, "--strength", str(1.35 * a.strength), "--ffmpeg", FF], check=True)
+                    "--move", a.move, "--strength", str(1.6 * a.strength), "--ffmpeg", shutil.which(FF) or FF], check=True)
     vf = f"fps={fps},format=rgb24"
     raw = subprocess.run([FF, "-v", "error", "-i", tmp, "-vf", vf, "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
     os.remove(tmp)
@@ -118,13 +129,13 @@ def measure(frames, W):
         g = cv2.cvtColor(cv2.resize(f, None, fx=sc, fy=sc, interpolation=cv2.INTER_AREA), cv2.COLOR_RGB2GRAY)
         if prev is not None:
             fl = cv2.calcOpticalFlowFarneback(prev, g, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-            mags.append(float(np.median(np.linalg.norm(fl, axis=2))) / sc)
+            mags.append(float(np.mean(np.linalg.norm(fl, axis=2))) / sc)   # mean: a push-in moves the edges, not the centre
         prev = g
-    tot = sum(mags)
-    return {"px_per_frame_min": round(min(mags), 2), "px_per_frame_median": round(float(np.median(mags)), 2),
+    tot = sum(mags); body = mags[int(0.4 * 30):] or mags   # skip the 0.4 s ease-in
+    return {"px_per_frame_p10": round(float(np.percentile(body, 10)), 2), "px_per_frame_mean": round(float(np.mean(mags)), 2),
             "total_px": round(tot, 1), "total_pct_width": round(100 * tot / W, 1),
             "frozen_frames_pct": round(100 * sum(m < 0.3 for m in mags) / len(mags), 1),
-            "pass": bool(min(mags) >= 0.6 and tot >= 0.08 * W)}
+            "pass": bool(np.percentile(body, 10) >= 1.0 and tot >= 0.15 * W)}
 
 
 def encode(frames, out, fps, W, H):
