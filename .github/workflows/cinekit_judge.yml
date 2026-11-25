@@ -1,0 +1,47 @@
+name: cinekit-judge
+
+run-name: judge ${{ inputs.tag }}
+
+# cinekit JUDGE (25 Nov): Gemini (Vertex) compares our transitions with Nitish Rajput's real 60-fps frames, side by side at 30 fps.
+# Plan + reference sheets come from R2 s2work/cinekit/judge_tmp/ (staged from the laptop, deleted after the study); previews from
+# s2work/cinekit/transitions_book/previews/. Results -> s2work/cinekit/judge_tmp/results/<tag>.json. Only scores reach the log.
+# VERTEX_TOKEN is a short-lived (1 h) access token set as a repo secret just before the run and deleted right after.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:   { description: 'result tag (a-z0-9_-)', required: true }
+      plan:  { description: 'R2 key of plan.json under s2work/cinekit/judge_tmp/', required: false, default: 's2work/cinekit/judge_tmp/plan.json' }
+      tool:  { description: 'judge | reel', required: false, default: 'judge' }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  VERTEX_TOKEN: ${{ secrets.VERTEX_TOKEN }}
+  VERTEX_PROJECT: ${{ secrets.VERTEX_PROJECT }}
+  TAG: ${{ inputs.tag }}
+  PLAN: ${{ inputs.plan }}
+  TOOL: ${{ inputs.tool }}
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    defaults: { run: { working-directory: cinekit/judge } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: tools
+        run: |
+          case "$TAG" in *[!A-Za-z0-9_-]*|'') echo "bad tag"; exit 1;; esac
+          case "$PLAN" in s2work/cinekit/judge_tmp/*.json) ;; *) echo "plan must be under s2work/cinekit/judge_tmp/"; exit 1;; esac
+          case "$TOOL" in judge|reel) ;; *) echo "bad tool"; exit 1;; esac
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg fonts-dejavu-core > /dev/null
+          pip install -q numpy pillow boto3
+      - name: run
+        run: |
+          python -c "import os,boto3;boto3.client('s3',endpoint_url=os.environ['CF_R2_ENDPOINT'],aws_access_key_id=os.environ['CF_R2_ACCESS_KEY_ID'],aws_secret_access_key=os.environ['CF_R2_SECRET_ACCESS_KEY'],region_name='auto').download_file('eduorbex-media',os.environ['PLAN'],'plan.json')"
+          if [ "$TOOL" = judge ]; then python judge.py plan.json --out out --tag "$TAG"; else python reel.py plan.json --out out --tag "$TAG"; fi
