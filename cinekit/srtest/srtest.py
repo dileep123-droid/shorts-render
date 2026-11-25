@@ -19,7 +19,7 @@ for f in ("job_old.json", "job_tr.json", "shorts_render_before.py", "shorts_rend
 J = json.load(open(IN / "job_old.json", encoding="utf-8"))
 for n, k in J["files"].items():
     if n == "face.mp4": continue
-    assert k.startswith("s2work/shorts1/") and ".." not in k
+    assert k.startswith(("s2work/shorts1/", "s2work/ep09/assets/")) and ".." not in k   # read only
     S3.download_file(B, k, str(IN / n))
 # ---- word timing from pauses
 o = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(IN / "voice.flac"), "-af", "silencedetect=n=-32dB:d=0.12", "-f", "null", "-"], capture_output=True, text=True).stderr
