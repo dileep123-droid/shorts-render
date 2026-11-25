@@ -6,7 +6,7 @@
 #
 #   kind        Nitish type                   frames @30 (his @60)   where (Shorts)
 #   whipsmear   T1 whip smear-in               A 1 f + B 2 f (2-3)     new voiced line / place change; direction alternates
-#   crashout    T2 blur crash-out (punch-in)   B 9 f (16-20)           THROUGH / ZOOM / PUNCH requests, "look closer"
+#   crashout    T2 blur crash-out (punch-in)   B 6 f (12-20)           THROUGH / ZOOM / PUNCH requests, "look closer"
 #   white       T4 white frame insert          3 f white (6)           FLASH requests, the hook reveal; never twice in 20 s
 #   slice       T7 slice glitch                A 4 f + B 4 f (8-11)    GLITCH requests only (tech / system / scam beats)
 import re
@@ -60,8 +60,8 @@ def plan(shots, D, log=print):
 
 
 def zoom_mult(kind):
-    """extra factor for the scale expression (crash-out: B starts at 200 % and eases out, cubic, in 0.3 s)"""
-    return "*(1+1.0*pow(max(0,1-t/0.3),3))" if kind == "crashout" else ""
+    """extra factor for the scale expression (crash-out: B starts at 270 % and eases out in 0.2 s)"""
+    return "*(1+1.7*pow(max(0,1-t/0.2),2.2))" if kind == "crashout" else ""   # 270 % -> 100 % in 0.2 s (Gemini-checked, 25 Nov)
 
 
 def head(kind, W=1080, H=1920, direction=1):
@@ -76,8 +76,8 @@ def head(kind, W=1080, H=1920, direction=1):
                   f"crop={W}:{H}:x='if(eq(n,0),{P},if(eq(n,1),{p2},0))':y=0")
         return sh + ",dblur=angle=0:radius=70:enable='eq(n,0)',dblur=angle=0:radius=22:enable='eq(n,1)'"
     if kind == "crashout":    # gaussian blur ~17 px at 1080 w, falling with the zoom (stepped, 9 frames)
-        return ("gblur=sigma=17:enable='lt(n,2)',gblur=sigma=10:enable='between(n,2,3)',"
-                "gblur=sigma=5:enable='between(n,4,5)',gblur=sigma=2:enable='between(n,6,7)'")
+        return ("gblur=sigma=16:enable='lt(n,2)',gblur=sigma=8:enable='between(n,2,3)',"
+                "gblur=sigma=3:enable='eq(n,4)'")
     if kind == "white":       # 6 f @60 = 3 f of solid white, hard on and hard off (no fade)
         return "drawbox=x=0:y=0:w=iw:h=ih:color=white:t=fill:enable='lt(n,3)'"
     if kind == "slice":       # bands shifted with RGB fringe, 4 f, the first 2 heavy
