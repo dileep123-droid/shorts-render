@@ -1419,6 +1419,508 @@
    "creator_match": "",
    "batch": 2,
    "url": "https://assets-v2.lottiefiles.com/a/4884eaf2-9502-11ee-8d36-cff82efb8a83/uxfB9NLgf5.lottie"
+  },
+  {
+   "id": 101,
+   "name": "NK_whipsmear",
+   "kind": "nk",
+   "nk": "whipsmear",
+   "frames": 3,
+   "category": "nitish kit T1",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "presenter->B-roll, place to place, action, teaser montage (alternate direction)"
+   ],
+   "creator_match": "Nitish T1 (4 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 102,
+   "name": "NK_crashout",
+   "kind": "nk",
+   "nk": "crashout",
+   "frames": 9,
+   "category": "nitish kit T2",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "return to the presenter / face in the teaser; punch into a key face or object"
+   ],
+   "creator_match": "Nitish T2 (18 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 103,
+   "name": "NK_zoomout",
+   "kind": "nk",
+   "nk": "zoomout",
+   "frames": 11,
+   "category": "nitish kit T13",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "reveal context after a detail (document word, face, pin)"
+   ],
+   "creator_match": "Nitish T13 (22 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 104,
+   "name": "NK_mirrorzoom",
+   "kind": "nk",
+   "nk": "mirrorzoom",
+   "frames": 7,
+   "category": "nitish kit T3",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "push THROUGH into the next scene (place change, 'go inside')"
+   ],
+   "creator_match": "Nitish T3 (14 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 105,
+   "name": "NK_white",
+   "kind": "nk",
+   "nk": "white",
+   "frames": 3,
+   "category": "nitish kit T4",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "shock line, action hit, punchline (teaser mostly)"
+   ],
+   "creator_match": "Nitish T4 (6 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 106,
+   "name": "NK_flashbang",
+   "kind": "nk",
+   "nk": "flashbang",
+   "frames": 19,
+   "category": "nitish kit T5",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "single teaser shock beat (crash, blast, 'struggle')"
+   ],
+   "creator_match": "Nitish T5 (38 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 107,
+   "name": "NK_rgbimpact",
+   "kind": "nk",
+   "nk": "rgbimpact",
+   "frames": 18,
+   "category": "nitish kit T6",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "impact into an action/danger shot, surveillance/tech beat"
+   ],
+   "creator_match": "Nitish T6 (48 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 108,
+   "name": "NK_sliceglitch",
+   "kind": "nk",
+   "nk": "sliceglitch",
+   "frames": 12,
+   "category": "nitish kit T7",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "tech/system/surveillance, glitch reframe of the same subject, danger entry"
+   ],
+   "creator_match": "Nitish T7 (24 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 109,
+   "name": "NK_cutblack",
+   "kind": "nk",
+   "nk": "cutblack",
+   "frames": 24,
+   "category": "nitish kit T8a",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "long-form only: pause before a reveal line, death/loss reveal, chapter end"
+   ],
+   "creator_match": "Nitish T8a (48 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 110,
+   "name": "NK_teaserstop",
+   "kind": "nk",
+   "nk": "teaserstop",
+   "frames": 61,
+   "category": "nitish kit T8b",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "long-form only: end of the teaser before the presenter/title"
+   ],
+   "creator_match": "Nitish T8b (122 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 111,
+   "name": "NK_parallaxpush",
+   "kind": "nk",
+   "nk": "parallaxpush",
+   "frames": 15,
+   "category": "nitish kit T9",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "between two photos / AI stills of the same story (place or person change)"
+   ],
+   "creator_match": "Nitish T9 (30 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 112,
+   "name": "NK_defocuspush",
+   "kind": "nk",
+   "nk": "defocuspush",
+   "frames": 7,
+   "category": "nitish kit T10",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "time jump or 'meanwhile' scene change"
+   ],
+   "creator_match": "Nitish T10 (14 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 113,
+   "name": "NK_dissolvemotion",
+   "kind": "nk",
+   "nk": "dissolvemotion",
+   "frames": 11,
+   "category": "nitish kit T14",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "time passing, place shift, emotional/family beats, ending"
+   ],
+   "creator_match": "Nitish T14 (22 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 114,
+   "name": "NK_bloom",
+   "kind": "nk",
+   "nk": "bloom",
+   "frames": 16,
+   "category": "nitish kit T15",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "into the past / memory, title drop, chapter stop (warm)"
+   ],
+   "creator_match": "Nitish T15 (32 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 115,
+   "name": "NK_gridsnake",
+   "kind": "nk",
+   "nk": "gridsnake",
+   "frames": 13,
+   "category": "nitish kit T16",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "teaser / title card exit, list of names, 'case file' reveal"
+   ],
+   "creator_match": "Nitish T16 (25 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 116,
+   "name": "NK_inkburn",
+   "kind": "nk",
+   "nk": "inkburn",
+   "frames": 14,
+   "category": "nitish kit T18",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "reveal starting from the subject (map pin, letter, photo) with a position match"
+   ],
+   "creator_match": "Nitish T18 (28 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 117,
+   "name": "NK_xreveal",
+   "kind": "nk",
+   "nk": "xreveal",
+   "frames": 15,
+   "category": "nitish kit T17",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "from a 4-panel / split-screen collage to the next scene"
+   ],
+   "creator_match": "Nitish T17 (30 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 118,
+   "name": "NK_spire",
+   "kind": "nk",
+   "nk": "spire",
+   "frames": 12,
+   "category": "nitish kit T17",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "dramatic reveal of a person or monument (B&W cut-out)"
+   ],
+   "creator_match": "Nitish T17 (24 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 119,
+   "name": "NK_cut",
+   "kind": "nk",
+   "nk": "cut",
+   "frames": 1,
+   "category": "nitish kit -",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "default (2/3 of all cuts)"
+   ],
+   "creator_match": "Nitish - (1 f @60)",
+   "batch": 3
+  },
+  {
+   "id": 140,
+   "name": "WhipPan",
+   "kind": "gl",
+   "category": "energetic (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 4,
+   "use": [
+    "place change",
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 3,
+   "retimed_from": 1
+  },
+  {
+   "id": 141,
+   "name": "CrossZoom",
+   "kind": "gl",
+   "category": "energetic (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 6,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 3,
+   "retimed_from": 2
+  },
+  {
+   "id": 142,
+   "name": "Overexposure",
+   "kind": "gl",
+   "category": "light/film (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 6,
+   "use": [
+    "reveal",
+    "action"
+   ],
+   "creator_match": "Nitish Flydubai 00:14/00:15 white flash; Dhruv Japan 27:13.5 white flash into presenter",
+   "batch": 3,
+   "retimed_from": 14
+  },
+  {
+   "id": 143,
+   "name": "GlitchMemories",
+   "kind": "gl",
+   "category": "glitch/tech (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 5,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 3,
+   "retimed_from": 6
+  },
+  {
+   "id": 144,
+   "name": "StripDatamoshGlitch",
+   "kind": "gl",
+   "category": "glitch/tech (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 8,
+   "use": [
+    "action",
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 00:04/00:15 glitch cuts; Dhruv Japan 00:57.1; Dhruv Always Tired 01:44.8 glitch jump cut",
+   "batch": 3,
+   "retimed_from": 7
+  },
+  {
+   "id": 145,
+   "name": "InkBleed",
+   "kind": "gl",
+   "category": "shape/liquid (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 14,
+   "use": [
+    "time jump",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 3,
+   "retimed_from": 8
+  },
+  {
+   "id": 146,
+   "name": "BurnThrough",
+   "kind": "gl",
+   "category": "dramatic (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 14,
+   "use": [
+    "reveal",
+    "chapter"
+   ],
+   "creator_match": "Dhruv Japan 00:35.4 yellow film-burn wipe; Dhruv Always Tired 18:57 film-burn wipe (outro)",
+   "batch": 3,
+   "retimed_from": 10
+  },
+  {
+   "id": 147,
+   "name": "DirectionalWipe",
+   "kind": "gl",
+   "category": "subtle/clean (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 8,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:39 / 03:12 diagonal split wipe",
+   "batch": 3,
+   "retimed_from": 25
+  },
+  {
+   "id": 148,
+   "name": "smoothleft",
+   "kind": "xfade",
+   "category": "energetic (retimed)",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 3,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 3,
+   "retimed_from": 75
+  },
+  {
+   "id": 149,
+   "name": "smoothleft",
+   "kind": "xfade",
+   "category": "energetic (retimed)",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 6,
+   "use": [
+    "place change"
+   ],
+   "creator_match": "Nitish Flydubai 00:10 whip; Dhruv Always Tired 00:01 whip-blur map zoom; Dhruv Epstein 00:28.5 quick whip cut",
+   "batch": 3,
+   "retimed_from": 75
+  },
+  {
+   "id": 150,
+   "name": "zoomin",
+   "kind": "xfade",
+   "category": "energetic (retimed)",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 5,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 3,
+   "retimed_from": 76
+  },
+  {
+   "id": 151,
+   "name": "fade",
+   "kind": "xfade",
+   "category": "subtle/clean (retimed)",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 11,
+   "use": [
+    "time jump"
+   ],
+   "creator_match": "Dhruv Epstein 00:12.5 cross-dissolve; Dhruv Japan 01:13.7 bloom dissolve; Dhruv Bhangarh 03:13.7 light dissolve",
+   "batch": 3,
+   "retimed_from": 72
+  },
+  {
+   "id": 152,
+   "name": "circleopen",
+   "kind": "xfade",
+   "category": "shape/liquid (retimed)",
+   "source": "ffmpeg xfade",
+   "licence": "ffmpeg xfade filter (LGPL code, output is ours)",
+   "frames": 8,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Nitish Flydubai 03:01 hex/iris graphic wipe",
+   "batch": 3,
+   "retimed_from": 77
+  },
+  {
+   "id": 153,
+   "name": "SimpleZoomOut",
+   "kind": "gl",
+   "category": "subtle/clean (retimed)",
+   "source": "gl-transitions@3.3.0",
+   "licence": "MIT (gl-transitions, https://github.com/gl-transitions/gl-transitions/blob/master/LICENSE ; licence line in each shader header)",
+   "frames": 10,
+   "use": [
+    "reveal"
+   ],
+   "creator_match": "Dhruv Bhangarh 03:56.5 punch-in; map zooms Dhruv Kailash 15:53.5, Nitish Daring Operation 01:17",
+   "batch": 3,
+   "retimed_from": 26
   }
  ]
 }
