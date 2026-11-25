@@ -1,0 +1,41 @@
+name: cinekit-tools
+
+run-name: tools ${{ inputs.batch }}
+
+# cinekit TOOLS (25 Nov): on-screen timelines (timeline/timeline.py) and moving photos (photo_motion.py: kenburns / cutout / depth /
+# push) in one batch. Input = R2 key of a batch JSON under s2work/cinekit/specs/; output = the batch's "out" prefix under
+# s2work/cinekit/ (+ report.json with the measured motion and, when VERTEX_TOKEN is set for the run, Gemini's still-check).
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch: { description: 'R2 key of the batch JSON, e.g. s2work/cinekit/specs/demo25.json', required: true }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  VERTEX_TOKEN: ${{ secrets.VERTEX_TOKEN }}
+  VERTEX_PROJECT: ${{ secrets.VERTEX_PROJECT }}
+  BATCH: ${{ inputs.batch }}
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults: { run: { working-directory: cinekit } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: tools
+        run: |
+          case "$BATCH" in s2work/cinekit/specs/*.json) ;; *) echo "batch must be s2work/cinekit/specs/*.json"; exit 1;; esac
+          sudo apt-get update -q && sudo apt-get install -y -q ffmpeg fonts-noto-core libraqm0 libfribidi0 libharfbuzz0b > /dev/null
+          pip install -q "rembg[cpu]==2.0.87" opencv-python-headless==4.10.0.84 numpy pillow huggingface_hub boto3 onnxruntime
+          python -c "from PIL import features; print('raqm', features.check('raqm'))"
+      - name: run
+        run: |
+          python r2io.py get "$BATCH" batch.json
+          python -u demo_batch.py batch.json 2>&1 | grep -v '%|'
