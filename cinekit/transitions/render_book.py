@@ -4,7 +4,8 @@
 
 Each item of book_spec.json -> a 3 s 640x360 30 fps H.264 preview between two of our Meta clips, number + name burned
 in at the bottom. Kinds: gl (gl-transitions GLSL via moderngl), kit (our Meta overlays: screen blend / luma matte / dip),
-xfade (ffmpeg), lottie (LottieFiles alpha used as a matte, fetched at render time, never stored).
+xfade (ffmpeg), lottie (LottieFiles alpha used as a matte, fetched at render time, never stored),
+nk (25 Nov: Nitish's transitions rebuilt frame by frame in nitish_tr.py; ids 101+; retimed Book variants 140+).
 R2: reads only s2work/shorts1/clips/ ; writes only s2work/cinekit/transitions_book/ (previews/ + results/).
 --local DIR: read clips from DIR/<basename> and skip R2 (for a laptop smoke test).
 """
@@ -309,6 +310,11 @@ def main():
                 frames = xfade(it, pa, pb)
             elif it["kind"] == "lottie":
                 frames = lottie(it, A, B, tmp)
+            elif it["kind"] == "nk":   # 25 Nov: Nitish transitions rebuilt frame by frame (nitish_tr.py)
+                import nitish_tr as NT
+                if NT.length(it["nk"], FPS) != D:
+                    raise RuntimeError(f"spec frames {D} != nitish_tr length {NT.length(it['nk'], FPS)}")
+                frames = assemble(A, B, NT.render(it["nk"], A[pre:pre + D], B[:D], FPS, **(it.get("params") or {})), D)
             else:
                 raise RuntimeError("unknown kind")
             label = f"{it['id']:03d}  {it['name']}  |  {it['category']}  |  {it['kind']}"
