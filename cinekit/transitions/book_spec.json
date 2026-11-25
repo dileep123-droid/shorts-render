@@ -1515,7 +1515,7 @@
    "name": "NK_rgbimpact",
    "kind": "nk",
    "nk": "rgbimpact",
-   "frames": 18,
+   "frames": 19,
    "category": "nitish kit T6",
    "source": "cinekit nitish_tr.py (own code)",
    "licence": "own code",
@@ -1704,6 +1704,28 @@
    ],
    "creator_match": "Nitish - (1 f @60)",
    "batch": 3
+  },
+  {
+   "id": 120,
+   "name": "NK_burnhole",
+   "kind": "nk",
+   "nk": "inkburn",
+   "frames": 14,
+   "category": "nitish kit T18b",
+   "source": "cinekit nitish_tr.py (own code)",
+   "licence": "own code",
+   "use": [
+    "reveal starting from the subject (map pin, letter, photo) with a position match"
+   ],
+   "creator_match": "Nitish T18 burn-hole (Eli 15:56)",
+   "batch": 3,
+   "params": {
+    "edge": "char",
+    "origin": [
+     0.45,
+     0.5
+    ]
+   }
   },
   {
    "id": 140,
