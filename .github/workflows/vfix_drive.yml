@@ -1,0 +1,29 @@
+name: vfix-drive
+
+run-name: voice fix to drive
+
+# Owner 25 Nov 2026: one fixed Mahabharatam master R2 -> Google Drive (next to the old master), on GitHub's internet. Prints counts only;
+# the Drive link is written to an R2 result file (public repo: no names or ids in the log).
+
+on:
+  workflow_dispatch:
+    inputs:
+      job: { description: 'R2 key of the job JSON (s2work/voicefix/<id>/out/drive_job.json)', required: true }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  DRIVE_TOKEN: ${{ secrets.DRIVE_TOKEN }}
+  JOB: ${{ inputs.job }}
+
+jobs:
+  copy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q boto3
+      - run: python vfix_drive.py "$JOB"
