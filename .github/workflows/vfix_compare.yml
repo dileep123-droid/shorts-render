@@ -1,0 +1,32 @@
+name: vfix-compare
+
+run-name: voice fix pilot compare
+
+# Owner 25 Nov 2026: pilot check of a cloud-built voice-fix master vs the laptop-built one. Results go to R2; the log prints counts only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job: { description: 'R2 key of the job JSON (s2work/voicefix_pilot/<id>/compare_job.json)', required: true }
+
+env:
+  CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+  CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+  CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+  DRIVE_TOKEN: ${{ secrets.DRIVE_TOKEN }}
+  JOB: ${{ inputs.job }}
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q boto3 numpy
+      - run: |
+          mkdir -p ff && cd ff
+          curl -sSL --fail -o ff.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2025-05-31-14-01/ffmpeg-N-119779-g6c291232cf-linux64-gpl.tar.xz
+          tar -xf ff.tar.xz && cp */bin/ffmpeg */bin/ffprobe . && rm -rf ff.tar.xz */
+      - run: python vfix_compare.py "$JOB"
