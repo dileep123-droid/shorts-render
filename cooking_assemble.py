@@ -379,8 +379,17 @@ def grab(src, t, out):
     return out
 
 # ---------------------------------------------------------------- main
+def make_preview(final, out):
+    sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", final, "-vf", "scale=720:1280:flags=lanczos", "-c:v", "libx264",
+        "-preset", "slow", "-crf", "23", "-maxrate", "2800k", "-bufsize", "5600k", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart", out])
+
 def do_dish(dish, mode, put_urls, report):
     name = dish["name"]; d = f"{WD}/{name}"; os.makedirs(d, exist_ok=True)
+    if mode == "preview":
+        src = fetch(dish["final_get"], f"{d}/{name}_v1.mp4"); pv = f"{d}/{name}_v1_preview.mp4"; make_preview(src, pv)
+        report[name] = {"preview": probe(pv), "preview_mb": round(os.path.getsize(pv) / 1e6, 1)}
+        put(put_urls[f"{name}_v1_preview.mp4"], pv, "video/mp4"); return
     segs, cardinfo = plan(dish)
     R = report.setdefault(name, {}); R["cards"] = cardinfo; R["missing"] = [c["id"] for c in dish["clips"] if not c.get("get")]
     R["segments"] = []
@@ -451,7 +460,10 @@ def do_dish(dish, mode, put_urls, report):
     for t_ in np.linspace(0.8, T - 0.6, 12):
         fin.append((grab(final, float(t_), f"{d}/fin{int(t_*10)}.jpg"), f"final {t_:.1f}s"))
     sheet(fin, 6, f"{d}/final_sheet.jpg", cell_w=300); put(put_urls[f"{name}_final_sheet.jpg"], f"{d}/final_sheet.jpg", "image/jpeg")
+    pv = f"{d}/{name}_v1_preview.mp4"; make_preview(final, pv)
+    R["preview"] = probe(pv); R["preview_mb"] = round(os.path.getsize(pv) / 1e6, 1)
     put(put_urls[f"{name}_v1.mp4"], final, "video/mp4"); put(put_urls[f"{name}_v1_silent.mp4"], silent, "video/mp4")
+    put(put_urls[f"{name}_v1_preview.mp4"], pv, "video/mp4")
     print("done", name, R["final"], R["final_lufs"], flush=True)
 
 def main():
