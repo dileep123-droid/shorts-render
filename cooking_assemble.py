@@ -211,6 +211,37 @@ def brand_png():
     d.text((22, 14), t, font=f, fill=(255, 255, 255, 205))
     p = WD + "/brand.png"; img.save(p); return p, (SAFE_L, SAFE_TOP + 6)
 
+def mark_png():
+    """Owner 26 Nov: moving semi-transparent watermark (opacity applied in ffmpeg)."""
+    f = font("SemiBold", 40); t = "chinnidiaries246"; w = int(tw(f, t)) + 24
+    img = Image.new("RGBA", (w, 70), (0, 0, 0, 0)); sh_ = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sh_).text((14, 14), t, font=f, fill=(0, 0, 0, 255))
+    img = Image.alpha_composite(sh_.filter(ImageFilter.GaussianBlur(3)), img)
+    ImageDraw.Draw(img).text((12, 10), t, font=f, fill=(255, 255, 255, 255))
+    p = WD + "/mark.png"; img.save(p); return p, img.size
+
+def mark_path(ia, ib, T, mw, mh):
+    """Keyframes (t, x, y): hidden during the hook; above the ingredient panel while it shows; then drifting in the lower-middle band
+    (tips are at the top). Each hop eases (cosine) over 1.8 s, then holds ~5 s. Always inside the safe area."""
+    xmax = SAFE_R - mw - 10
+    up = [(SAFE_L + 14, 330), (xmax, 430), (SAFE_L + 60, 400), (xmax - 40, 340)]
+    low = [(xmax, 1430), (SAFE_L + 14, 1290), (xmax - 60, 1180), (SAFE_L + 40, 1470), (int((SAFE_L + xmax) / 2), 1350)]
+    kf = [(ia, *up[0])]; t = ia; k = 1
+    while t + 7 < ib - 0.5:
+        t += 7; kf.append((t, *up[k % len(up)])); k += 1
+    t = ib + 1.6; k = 0
+    while t < T:
+        kf.append((t, *low[k % len(low)])); k += 1; t += 7
+    return kf
+
+def mark_expr(kf, i):
+    md = 1.8; e = f"{kf[-1][i]}"
+    for (t0, *p0), (t1, *p1) in reversed(list(zip(kf[:-1], kf[1:]))):
+        a, b = p0[i - 1], p1[i - 1]; s0 = max(t0, t1 - md); d = t1 - s0
+        seg = f"{a}+({b - a})*(1-cos(PI*clip((t-{s0:.3f})/{d:.3f},0,1)))/2"
+        e = f"if(lt(t,{t1:.3f}),{seg},{e})"
+    return e.replace(",", r"\,")
+
 # ---------------------------------------------------------------- plan per dish
 def outline_png(blocks, path):
     """v2 style (owner 26 Nov, like top food Shorts): bold white text with a thick dark outline + soft shadow, NO panel.
@@ -467,17 +498,20 @@ def do_dish(dish, mode, put_urls, report):
     if mode == "sheet": return
     # join: xfade chain + acrossfade chain + brand tag + music + end fade
     music_bed(T, f"{d}/music.wav", seed=dish.get("seed", 7))
-    bp, (bx, by) = brand_png()
+    mp, (mw, mh) = mark_png()
+    ia = segs[0]["L"] if segs[0]["role"] == "hook" else 0.0
+    ib = ia + next((s["L"] for s in segs if s["role"] == "ingredients"), 0.0)
+    kf = mark_path(ia, ib, T, mw, mh); R["watermark_keyframes"] = [[round(a, 2), b, c] for a, b, c in kf]
     ins = []
     for i in range(len(segs)): ins += ["-i", f"{d}/seg{i}.mp4"]
     for i in range(len(segs)): ins += ["-i", f"{d}/seg{i}.wav"]
-    n = len(segs); ins += ["-i", f"{d}/music.wav", "-loop", "1", "-framerate", str(FPS), "-t", f"{T:.3f}", "-i", bp]
+    n = len(segs); ins += ["-i", f"{d}/music.wav", "-loop", "1", "-framerate", str(FPS), "-t", f"{T:.3f}", "-i", mp]
     fc = []; cur = "0:v"; off = 0.0
     for i in range(1, n):
         off += segs[i - 1]["L"]
         fc.append(f"[{cur}][{i}:v]xfade=transition=fade:duration={XF}:offset={off:.3f}[x{i}]"); cur = f"x{i}"
-    fc.append(f"[{2*n+1}:v]format=rgba,fade=t=in:st=0.3:d=0.6:alpha=1[bt]")
-    fc.append(f"[{cur}][bt]overlay=x={bx}:y={by}:shortest=1,fade=t=out:st={T - 1.2:.3f}:d=1.2,trim=duration={T:.3f},format=yuv420p[vout]")
+    fc.append(f"[{2*n+1}:v]format=rgba,colorchannelmixer=aa=0.32,fade=t=in:st={ia + 0.2:.3f}:d=0.8:alpha=1[bt]")
+    fc.append(f"[{cur}][bt]overlay=x='{mark_expr(kf, 1)}':y='{mark_expr(kf, 2)}':eval=frame:shortest=1,fade=t=out:st={T - 1.2:.3f}:d=1.2,trim=duration={T:.3f},format=yuv420p[vout]")
     acur = f"{n}:a"
     for i in range(1, n):
         fc.append(f"[{acur}][{n+i}:a]acrossfade=d={XF}:c1=tri:c2=tri[a{i}]"); acur = f"a{i}"
