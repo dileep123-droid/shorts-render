@@ -145,7 +145,7 @@ def step_card(n, title, line):
     c.badge(f"Step {n}")
     c.text(words(title, font("Bold", 60), WHITE), 74, gap=20)
     c.text(words(disp(line), font("Regular", 46), SOFT), 62, gap=8)
-    img, M, _ = c.render(); return img, place_bottom(img, M)
+    img, M, _ = c.render(); return img, (SAFE_L - M, SAFE_TOP + 96 - M)   # owner 26 Nov: step captions at the TOP, food stays clear
 
 def disp(t): return t.replace(" - ", " – ")
 
@@ -220,7 +220,7 @@ def plan(dish):
     for c in clips:
         L = float(c["dur"])
         if c["role"] == "ingredients": L = max(L, 8.0, 1.95 + 2.45 * len(dish["pages"]) + 0.15)
-        segs.append(dict(id=c["id"], role=c["role"], L=L, get=c.get("get"), step=c.get("step")))
+        segs.append(dict(id=c["id"], role=c["role"], L=L, get=c.get("get"), step=c.get("step"), ss=c.get("ss")))
     # missing clips: the shot before holds longer
     full = [s for s in segs if s["get"]]
     for i, s in enumerate(segs):
@@ -282,6 +282,7 @@ def build_segment(s, last, src, out_v, out_a, info):
     need = s["L"] + (0 if last else XF)
     pr = probe(src); info.update(src_dur=round(pr["dur"], 2), src_res=f"{pr['w']}x{pr['h']}", src_fps=pr["fps"])
     ss = 0.5 if pr["dur"] - 0.5 >= need * 0.75 else max(0.15, min(0.5, pr["dur"] - need))
+    if s.get("ss"): ss = min(float(s["ss"]), max(0.5, pr["dur"] - need / 1.3))
     avail = max(0.5, pr["dur"] - ss - 0.05)
     slow = 1.0 if avail >= need else min(need / avail, 1.30)
     info.update(trim_start=round(ss, 2), slow=round(slow, 3), hold=round(max(0, need - avail * slow), 2))
@@ -395,11 +396,11 @@ def make_preview(final, out):
         "-movflags", "+faststart", out])
 
 def do_dish(dish, mode, put_urls, report):
-    name = dish["name"]; d = f"{WD}/{name}"; os.makedirs(d, exist_ok=True)
+    name = dish["name"]; d = f"{WD}/{name}"; os.makedirs(d, exist_ok=True); V = dish.get("ver", "v1")
     if mode == "preview":
-        src = fetch(dish["final_get"], f"{d}/{name}_v1.mp4"); pv = f"{d}/{name}_v1_preview.mp4"; make_preview(src, pv)
+        src = fetch(dish["final_get"], f"{d}/{name}_{V}.mp4"); pv = f"{d}/{name}_{V}_preview.mp4"; make_preview(src, pv)
         report[name] = {"preview": probe(pv), "preview_mb": round(os.path.getsize(pv) / 1e6, 1)}
-        put(put_urls[f"{name}_v1_preview.mp4"], pv, "video/mp4"); return
+        put(put_urls[f"{name}_{V}_preview.mp4"], pv, "video/mp4"); return
     segs, cardinfo = plan(dish)
     R = report.setdefault(name, {}); R["cards"] = cardinfo; R["missing"] = [c["id"] for c in dish["clips"] if not c.get("get")]
     R["segments"] = []
@@ -455,7 +456,7 @@ def do_dish(dish, mode, put_urls, report):
         fc.append(f"[{acur}][{n+i}:a]acrossfade=d={XF}:c1=tri:c2=tri[a{i}]"); acur = f"a{i}"
     fc.append(f"[{acur}][{2*n}:a]amix=inputs=2:normalize=0:duration=first,alimiter=limit=0.89:level=disabled,"
               f"afade=t=out:st={T - 1.4:.3f}:d=1.4,atrim=duration={T:.3f}[aout]")
-    final = f"{d}/{name}_v1.mp4"; silent = f"{d}/{name}_v1_silent.mp4"
+    final = f"{d}/{name}_{V}.mp4"; silent = f"{d}/{name}_{V}_silent.mp4"
     sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"] + ins + ["-filter_complex", ";".join(fc), "-map", "[vout]", "-map", "[aout]",
         "-c:v", "libx264", "-preset", "slow", "-crf", "19", "-maxrate", "7M", "-bufsize", "14M", "-profile:v", "high", "-pix_fmt", "yuv420p",
         "-r", str(FPS), "-g", "60", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", final])
@@ -470,10 +471,10 @@ def do_dish(dish, mode, put_urls, report):
     for t_ in np.linspace(0.8, T - 0.6, 12):
         fin.append((grab(final, float(t_), f"{d}/fin{int(t_*10)}.jpg"), f"final {t_:.1f}s"))
     sheet(fin, 6, f"{d}/final_sheet.jpg", cell_w=300); put(put_urls[f"{name}_final_sheet.jpg"], f"{d}/final_sheet.jpg", "image/jpeg")
-    pv = f"{d}/{name}_v1_preview.mp4"; make_preview(final, pv)
+    pv = f"{d}/{name}_{V}_preview.mp4"; make_preview(final, pv)
     R["preview"] = probe(pv); R["preview_mb"] = round(os.path.getsize(pv) / 1e6, 1)
-    put(put_urls[f"{name}_v1.mp4"], final, "video/mp4"); put(put_urls[f"{name}_v1_silent.mp4"], silent, "video/mp4")
-    put(put_urls[f"{name}_v1_preview.mp4"], pv, "video/mp4")
+    put(put_urls[f"{name}_{V}.mp4"], final, "video/mp4"); put(put_urls[f"{name}_{V}_silent.mp4"], silent, "video/mp4")
+    put(put_urls[f"{name}_{V}_preview.mp4"], pv, "video/mp4")
     print("done", name, R["final"], R["final_lufs"], flush=True)
 
 def main():
