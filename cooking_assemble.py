@@ -212,14 +212,34 @@ def brand_png():
     p = WD + "/brand.png"; img.save(p); return p, (SAFE_L, SAFE_TOP + 6)
 
 # ---------------------------------------------------------------- plan per dish
+def outline_png(blocks, path):
+    """v2 style (owner 26 Nov, like top food Shorts): bold white text with a thick dark outline + soft shadow, NO panel.
+    blocks: [(text, style, size, color, line_h)] -> centred at x=540 within the safe width; returns (x, y_offset_unused)."""
+    TW = 2 * (SAFE_R - 540); M = 30; lines = []
+    for text, st, sz, col, lh in blocks:
+        for ln in wrap_tokens(words(text, font(st, sz), col), TW):
+            lines.append((ln, lh))
+    h = sum(lh for _, lh in lines)
+    img = Image.new("RGBA", (TW + 2 * M, h + 2 * M), (0, 0, 0, 0))
+    sh_ = Image.new("RGBA", img.size, (0, 0, 0, 0)); ds = ImageDraw.Draw(sh_); d = ImageDraw.Draw(img)
+    y = M
+    for ln, lh in lines:
+        f = ln[0][1]; txt = " ".join(w for w, _, _ in ln); c = ln[0][2]
+        w = tw(f, txt); x = M + (TW - w) / 2; sw = max(4, f.size // 11)
+        ds.text((x + 3, y + 6), txt, font=f, fill=(0, 0, 0, 200), stroke_width=sw + 2, stroke_fill=(0, 0, 0, 200))
+        d.text((x, y), txt, font=f, fill=c + (255,), stroke_width=sw, stroke_fill=(22, 12, 4, 255))
+        y += lh
+    img = Image.alpha_composite(sh_.filter(ImageFilter.GaussianBlur(7)), img)
+    img.save(path); return (540 - TW // 2 - M, SAFE_TOP + 92 - M)
+
 def plan(dish):
     """Returns list of segments: {id, L (time on screen), cards:[(png, x, y, a, b)], get}"""
     clips = dish["clips"]; segs = []
     dish["pages"] = balance_pages(dish["pages"])
     for c in clips:
         L = float(c["dur"])
-        if c["role"] == "ingredients": L = max(L, 8.0, 1.95 + 2.45 * len(dish["pages"]) + 0.15)
-        segs.append(dict(id=c["id"], role=c["role"], L=L, get=c.get("get"), step=c.get("step"), ss=c.get("ss")))
+        if c["role"] == "ingredients": L = max(L, 0.35 + 2.5 * len(dish["pages"]) + 0.15)
+        segs.append(dict(id=c["id"], role=c["role"], L=L, get=c.get("get"), step=c.get("step"), ss=c.get("ss"), tip=c.get("tip")))
     # missing clips: the shot before holds longer
     full = [s for s in segs if s["get"]]
     for i, s in enumerate(segs):
@@ -234,33 +254,36 @@ def plan(dish):
             else:
                 segs[j]["L"] += s["L"]
     segs = full
-    stepn = 0; cardinfo = []
+    # HOOK first (owner v2): 1.5 s of the finished dish (hero clip, middle part) with the dish name
+    hsrc = next((s for s in segs if s["role"] == "hero"), segs[-1])
+    hook = dict(id=hsrc["id"] + "_hook", role="hook", L=1.6, get=hsrc["get"], step=None, ss="late" if hsrc["role"] != "hero" else "mid", tip=None)
+    segs = [hook] + segs
+    cardinfo = []
     for k, s in enumerate(segs):
         s["cards"] = []; L = s["L"]
-        if s["role"] == "ingredients":
-            img, (x, y) = title_card(dish["title"], dish["subtitle"]); p = f"{WD}/{s['id']}_t.png"; img.save(p)
-            s["cards"].append((p, x, y, 0.20, 1.85))
+        if s["role"] == "hook":
+            p = f"{WD}/{s['id']}.png"; x, y = outline_png([(dish["title"], "Bold", 92, WHITE, 108)], p)
+            s["cards"].append((p, x, y, 0.0, L - 0.12))
+        elif s["role"] == "ingredients":
             pages = dish["pages"]; n = len(pages)
-            t0 = 1.95; span = (L - 0.15 - t0) / n
+            t0 = 0.3; span = (L - 0.15 - t0) / n
             for pi, items in enumerate(pages):
                 img, (x, y), nl, fs = ingr_card(items, pi + 1, n); p = f"{WD}/{s['id']}_p{pi+1}.png"; img.save(p)
                 s["cards"].append((p, x, y, t0 + pi * span + 0.05, t0 + (pi + 1) * span - 0.05))
                 cardinfo.append(dict(card=f"ingredients p{pi+1}", lines=nl, font=fs))
         elif s["role"] == "step":
-            stepn += 1
-            t, ln = s["step"]
-            img, (x, y) = step_card(stepn, t, ln); p = f"{WD}/{s['id']}_s.png"; img.save(p)
-            if s.get("hero_over"):   # hero clip missing: step card, then the dish card over the last ~2.6 s
-                s["cards"].append((p, x, y, 0.35, L - 2.95))
-                hero = [c for c in dish["clips"] if c["role"] == "hero"][0]
-                img, (x, y) = hero_card((hero.get("step") or ("", ""))[0], dish["title"], (hero.get("step") or ("", ""))[1])
-                p = f"{WD}/{s['id']}_h.png"; img.save(p); s["cards"].append((p, x, y, L - 2.65, L + 5))
-            else:
-                s["cards"].append((p, x, y, 0.35, L - 0.18))
+            endc = L - 2.95 if s.get("hero_over") else L - 0.2
+            if s.get("tip"):
+                p = f"{WD}/{s['id']}_tip.png"; x, y = outline_png([(s["tip"], "Bold", 76, WHITE, 92)], p)
+                s["cards"].append((p, x, y, 0.4, max(0.4 + 2.6, min(endc, 0.4 + 4.6))))
+            if s.get("hero_over"):
+                p = f"{WD}/{s['id']}_h.png"
+                x, y = outline_png([("Serve hot", "Bold", 60, ACCENT, 74), (dish["title"], "Bold", 84, WHITE, 100)], p)
+                s["cards"].append((p, x, y, L - 2.65, L + 5))
         else:
-            t, ln = s["step"] or ("", "")
-            img, (x, y) = hero_card(t, dish["title"], ln); p = f"{WD}/{s['id']}_h.png"; img.save(p)
-            s["cards"].append((p, x, y, 0.45, L + 5))
+            p = f"{WD}/{s['id']}_h.png"
+            x, y = outline_png([("Serve hot", "Bold", 60, ACCENT, 74), (dish["title"], "Bold", 84, WHITE, 100)], p)
+            s["cards"].append((p, x, y, 0.6, L + 5))
     return segs, cardinfo
 
 # ---------------------------------------------------------------- media
@@ -281,7 +304,9 @@ def build_segment(s, last, src, out_v, out_a, info):
     need = s["L"] + (0 if last else XF)
     pr = probe(src); info.update(src_dur=round(pr["dur"], 2), src_res=f"{pr['w']}x{pr['h']}", src_fps=pr["fps"])
     ss = 0.5 if pr["dur"] - 0.5 >= need * 0.75 else max(0.15, min(0.5, pr["dur"] - need))
-    if s.get("ss"): ss = min(float(s["ss"]), max(0.5, pr["dur"] - need / 1.3))
+    if s.get("ss") == "mid": ss = max(0.5, pr["dur"] * 0.55 - need / 2)
+    elif s.get("ss") == "late": ss = max(0.5, pr["dur"] - need - 0.3)
+    elif s.get("ss"): ss = min(float(s["ss"]), max(0.5, pr["dur"] - need / 1.3))
     avail = max(0.5, pr["dur"] - ss - 0.05)
     slow = 1.0 if avail >= need else min(need / avail, 1.30)
     info.update(trim_start=round(ss, 2), slow=round(slow, 3), hold=round(max(0, need - avail * slow), 2))
@@ -309,7 +334,7 @@ def build_segment(s, last, src, out_v, out_a, info):
     if has:
         tempo = 1 / slow
         af = (f"atrim=start={ss:.3f},asetpts=PTS-STARTPTS,aresample=48000,atempo={tempo:.4f},"
-              f"highpass=f=60,loudnorm=I={-18 if info.get('src_mean_db', -99) > -40 else -23}:TP=-3:LRA=11,aresample=48000,apad,atrim=duration={need:.3f}")
+              f"highpass=f=60,loudnorm=I={-15 if info.get('src_mean_db', -99) > -40 else -19}:TP=-3:LRA=11,aresample=48000,apad,atrim=duration={need:.3f}")
         sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", src, "-vn", "-af", af, "-ac", "2", "-ar", "48000", "-c:a", "pcm_s16le", out_a])
     else:
         sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", f"{need:.3f}",
@@ -370,7 +395,7 @@ def music_bed(seconds, path, seed=7):
     with wave.open(raw, "wb") as w:
         w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr); w.writeframes((out * 32767).astype("<i2").tobytes())
     sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", raw, "-af",
-        f"lowpass=f=7000,loudnorm=I=-22:TP=-4:LRA=7,aresample=48000,afade=t=in:d=1.5,afade=t=out:st={seconds - 2.5:.2f}:d=2.5",
+        f"lowpass=f=7000,loudnorm=I=-27:TP=-6:LRA=7,aresample=48000,afade=t=in:d=1.5,afade=t=out:st={seconds - 2.5:.2f}:d=2.5",
         "-c:a", "pcm_s16le", path])
 
 # ---------------------------------------------------------------- sheets
@@ -419,7 +444,7 @@ def do_dish(dish, mode, put_urls, report):
         sheet(frames, 5, f"{d}/layout.jpg"); put(put_urls[f"{name}_layout.jpg"], f"{d}/layout.jpg", "image/jpeg"); return
     # download clips
     for s in segs:
-        s["src"] = fetch(s["get"], f"{d}/{s['id']}.mp4")
+        s["src"] = fetch(s["get"], f"{d}/{s['id'].replace('_hook', '')}.mp4")
     T = sum(s["L"] for s in segs); R["total"] = round(T, 2)
     qa, txt = [], []
     for i, s in enumerate(segs):
