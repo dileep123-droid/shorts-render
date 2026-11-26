@@ -248,7 +248,13 @@ def plan(dish):
             stepn += 1
             t, ln = s["step"]
             img, (x, y) = step_card(stepn, t, ln); p = f"{WD}/{s['id']}_s.png"; img.save(p)
-            s["cards"].append((p, x, y, 0.35, L - 0.18))
+            if k == len(segs) - 1 and L > 10:   # hero clip missing: this step holds longer and ends with the dish card
+                s["cards"].append((p, x, y, 0.35, 6.8))
+                hero = [c for c in dish["clips"] if c["role"] == "hero"][0]
+                img, (x, y) = hero_card((hero.get("step") or ("", ""))[0], dish["title"], (hero.get("step") or ("", ""))[1])
+                p = f"{WD}/{s['id']}_h.png"; img.save(p); s["cards"].append((p, x, y, 7.1, L + 5))
+            else:
+                s["cards"].append((p, x, y, 0.35, L - 0.18))
         else:
             t, ln = s["step"] or ("", "")
             img, (x, y) = hero_card(t, dish["title"], ln); p = f"{WD}/{s['id']}_h.png"; img.save(p)
