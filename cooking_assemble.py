@@ -445,6 +445,19 @@ def grab(src, t, out):
     return out
 
 # ---------------------------------------------------------------- main
+def make_poster(src, out, at=None):
+    """Clean still of the hero/serving shot (no text): 540x960 JPG ~60-90 KB."""
+    pr = probe(src); t = at if at is not None else pr["dur"] * 0.55
+    raw = out + ".png"
+    sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-ss", f"{t:.3f}", "-i", src, "-frames:v", "1",
+        "-vf", "scale=540:960:force_original_aspect_ratio=increase:flags=lanczos,crop=540:960", raw])
+    im = Image.open(raw).convert("RGB"); q = 88
+    while True:
+        im.save(out, quality=q, optimize=True, progressive=True)
+        if os.path.getsize(out) <= 90000 or q <= 60: break
+        q -= 4
+    os.remove(raw); return os.path.getsize(out)
+
 def putk(put_urls, k, path, ctype):
     if k in put_urls: put(put_urls[k], path, ctype)
 
@@ -455,6 +468,12 @@ def make_preview(final, out):
 
 def do_dish(dish, mode, put_urls, report):
     name = dish["name"]; d = f"{WD}/{name}"; os.makedirs(d, exist_ok=True); V = dish.get("ver", "v1")
+    if mode == "poster":
+        hero = next((c for c in dish["clips"] if c["role"] == "hero" and c.get("get")), None) or [c for c in dish["clips"] if c.get("get")][-1]
+        src = fetch(hero["get"], f"{d}/poster_src.mp4"); pp = f"{d}/{name}_poster.jpg"
+        at = None if hero["role"] == "hero" else max(0.5, probe(src)["dur"] - 0.6)
+        report[name] = {"poster_from": hero["id"], "poster_bytes": make_poster(src, pp, at)}
+        putk(put_urls, f"{name}_poster.jpg", pp, "image/jpeg"); return
     if mode == "preview":
         src = fetch(dish["final_get"], f"{d}/{name}_{V}.mp4"); pv = f"{d}/{name}_{V}_preview.mp4"; make_preview(src, pv)
         report[name] = {"preview": probe(pv), "preview_mb": round(os.path.getsize(pv) / 1e6, 1)}
@@ -532,6 +551,10 @@ def do_dish(dish, mode, put_urls, report):
     for t_ in np.linspace(0.8, T - 0.6, 12):
         fin.append((grab(final, float(t_), f"{d}/fin{int(t_*10)}.jpg"), f"final {t_:.1f}s"))
     sheet(fin, 6, f"{d}/final_sheet.jpg", cell_w=300); putk(put_urls, f"{name}_final_sheet.jpg", f"{d}/final_sheet.jpg", "image/jpeg")
+    if f"{name}_poster.jpg" in put_urls:
+        hs = next((s for s in segs if s["role"] == "hero"), None) or segs[-1]
+        R["poster_bytes"] = make_poster(hs["src"], f"{d}/{name}_poster.jpg", None if hs["role"] == "hero" else max(0.5, probe(hs["src"])["dur"] - 0.6))
+        putk(put_urls, f"{name}_poster.jpg", f"{d}/{name}_poster.jpg", "image/jpeg")
     pv = f"{d}/{name}_{V}_preview.mp4"
     if f"{name}_{V}_preview.mp4" in put_urls:
         make_preview(final, pv); R["preview"] = probe(pv); R["preview_mb"] = round(os.path.getsize(pv) / 1e6, 1)
