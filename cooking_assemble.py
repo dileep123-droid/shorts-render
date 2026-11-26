@@ -13,7 +13,7 @@ XF = 0.30                       # cross-dissolve length
 SAFE_L, SAFE_R = 56, 950        # right 12% kept clear (YouTube buttons)
 SAFE_TOP, SAFE_BOT = 200, 1548  # top 10% / bottom 18% (1574) kept clear
 ACCENT = (244, 180, 0); WHITE = (255, 255, 255); SOFT = (242, 234, 222); DARK = (30, 20, 8)
-PANEL = (20, 14, 8, 150)
+PANEL = (20, 14, 8, 165)
 WD = "/tmp/ck"; os.makedirs(WD, exist_ok=True)
 
 def sh(cmd, quiet=True):
@@ -299,7 +299,7 @@ def build_segment(s, last, src, out_v, out_a, info):
     if has:
         tempo = 1 / slow
         af = (f"atrim=start={ss:.3f},asetpts=PTS-STARTPTS,aresample=48000,atempo={tempo:.4f},"
-              f"highpass=f=60,loudnorm=I=-18:TP=-3:LRA=11,aresample=48000,apad,atrim=duration={need:.3f}")
+              f"highpass=f=60,loudnorm=I={-18 if info.get('src_mean_db', -99) > -40 else -23}:TP=-3:LRA=11,aresample=48000,apad,atrim=duration={need:.3f}")
         sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", src, "-vn", "-af", af, "-ac", "2", "-ar", "48000", "-c:a", "pcm_s16le", out_a])
     else:
         sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", f"{need:.3f}",
