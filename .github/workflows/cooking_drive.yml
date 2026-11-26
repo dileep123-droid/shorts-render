@@ -1,0 +1,27 @@
+name: cooking-drive
+
+run-name: cooking drive ${{ inputs.tag }}
+
+# Cooking series: copy finished Shorts (R2, via presigned links in a private job file) into Google Drive.
+# Small copy of the r2_drive_mirror idea: same drive_io.py helper and the existing DRIVE_TOKEN secret; no R2 keys here.
+# The job link is read from the event file and masked. The log prints only counts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job: { description: 'presigned GET link of the job json', required: true }
+      tag: { description: 'short label for the run name', required: false, default: 'job' }
+
+jobs:
+  copy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      DRIVE_TOKEN: ${{ secrets.DRIVE_TOKEN }}
+    steps:
+      - name: mask
+        run: U=$(jq -r .inputs.job "$GITHUB_EVENT_PATH"); echo "::add-mask::$U"
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "cooking_drive.py\ndrive_io.py", sparse-checkout-cone-mode: false }
+      - name: copy to Drive
+        run: python3 cooking_drive.py
