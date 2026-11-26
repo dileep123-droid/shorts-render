@@ -140,12 +140,12 @@ class Card:
 def place_bottom(img, M, x=SAFE_L, bottom=SAFE_BOT - 10):
     return x - M, bottom - (img.size[1] - 2 * M) - M
 
-def step_card(n, title, line):
-    c = Card(SAFE_R - SAFE_L)
-    c.badge(f"Step {n}")
-    c.text(words(title, font("Bold", 60), WHITE), 74, gap=20)
-    c.text(words(disp(line), font("Regular", 46), SOFT), 62, gap=8)
-    img, M, _ = c.render(); return img, (SAFE_L - M, SAFE_TOP + 96 - M)   # owner 26 Nov: step captions at the TOP, food stays clear
+def step_card(n, title, line=None):
+    # owner 26 Nov v2: ONE compact label at the top, "Step N · title", no instruction line (food fills the frame)
+    c = Card(SAFE_R - SAFE_L, pad=28)
+    f = font("Bold", 50)
+    c.text([(f"Step {n}", font("Bold", 50), ACCENT), ("·", font("Bold", 50), ACCENT)] + words(title, f, WHITE), 66)
+    img, M, _ = c.render(); return img, (SAFE_L - M, SAFE_TOP + 96 - M)
 
 def disp(t): return t.replace(" - ", " – ")
 
@@ -198,12 +198,11 @@ def balance_pages(pages, maxl=9):
     return pages
 
 def hero_card(kicker, title, line):
-    c = Card(SAFE_R - SAFE_L, pad=48)
-    c.pad = 36
-    c.text(words(kicker, font("SemiBold", 40), ACCENT), 54, center=True)
-    c.text(words(title, font("Bold", 64), WHITE), 78, gap=6, center=True)
-    c.text(words(disp(line), font("Regular", 46), SOFT), 60, gap=10, center=True)
-    img, M, _ = c.render(); return img, (SAFE_L - M, SAFE_TOP + 96 - M)   # top third: the hero food stays clear
+    # owner v2: dish name + "Serve hot" only, top third
+    c = Card(SAFE_R - SAFE_L, pad=34)
+    c.text(words(title, font("Bold", 66), WHITE), 80, center=True)
+    c.text(words("Serve hot", font("SemiBold", 46), ACCENT), 60, gap=6, center=True)
+    img, M, _ = c.render(); return img, (SAFE_L - M, SAFE_TOP + 96 - M)
 
 def brand_png():
     f = font("Medium", 34); t = "chinnidiaries246"; w = int(tw(f, t)) + 44
