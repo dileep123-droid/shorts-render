@@ -230,7 +230,10 @@ def plan(dish):
             if j < 0:
                 j = i + 1
                 while not segs[j]["get"]: j += 1
-            segs[j]["L"] += s["L"]
+            if s["role"] == "hero" and j == i - 1:   # hero missing: hold the last step ~3 s longer, the dish card rides on its end
+                segs[j]["L"] += 3.0; segs[j]["hero_over"] = True
+            else:
+                segs[j]["L"] += s["L"]
     segs = full
     stepn = 0; cardinfo = []
     for k, s in enumerate(segs):
@@ -248,11 +251,11 @@ def plan(dish):
             stepn += 1
             t, ln = s["step"]
             img, (x, y) = step_card(stepn, t, ln); p = f"{WD}/{s['id']}_s.png"; img.save(p)
-            if k == len(segs) - 1 and L > 10:   # hero clip missing: this step holds longer and ends with the dish card
-                s["cards"].append((p, x, y, 0.35, 6.8))
+            if s.get("hero_over"):   # hero clip missing: step card, then the dish card over the last ~2.6 s
+                s["cards"].append((p, x, y, 0.35, L - 2.95))
                 hero = [c for c in dish["clips"] if c["role"] == "hero"][0]
                 img, (x, y) = hero_card((hero.get("step") or ("", ""))[0], dish["title"], (hero.get("step") or ("", ""))[1])
-                p = f"{WD}/{s['id']}_h.png"; img.save(p); s["cards"].append((p, x, y, 7.1, L + 5))
+                p = f"{WD}/{s['id']}_h.png"; img.save(p); s["cards"].append((p, x, y, L - 2.65, L + 5))
             else:
                 s["cards"].append((p, x, y, 0.35, L - 0.18))
         else:
