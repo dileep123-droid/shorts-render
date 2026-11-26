@@ -2,20 +2,25 @@ name: cooking-assemble
 
 run-name: cooking ${{ inputs.tag }}
 
-# Cooking Shorts (chinnidiaries246): edit Meta AI clips into a finished vertical Short + silent copy.
+# Cooking Shorts (chinnidiaries246): edit Meta AI clips into finished vertical Shorts + silent copies.
 # The only input is a short-lived presigned link to a private job file; every clip / output inside it is also a presigned link.
 # This workflow uses NO repository secrets. The link is read from the event file and masked; it is never expanded into the log.
+# shards: JSON list like [0,1,2] -> one runner per shard, shard i renders dishes i, i+n, i+2n ...
 
 on:
   workflow_dispatch:
     inputs:
       job: { description: 'presigned GET link of the job json', required: true }
       tag: { description: 'short label for the run name', required: false, default: 'job' }
+      shards: { description: 'JSON list of shard numbers', required: false, default: '[0]' }
 
 jobs:
   assemble:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: { shard: "${{ fromJSON(inputs.shards) }}" }
     steps:
       - name: mask
         run: U=$(jq -r .inputs.job "$GITHUB_EVENT_PATH"); echo "::add-mask::$U"
@@ -26,4 +31,5 @@ jobs:
           sudo apt-get update -q > /dev/null && sudo apt-get install -y -q ffmpeg > /dev/null
           python3 -m pip install -q --break-system-packages pillow numpy
       - name: assemble
+        env: { SHARD: "${{ matrix.shard }}" }
         run: python3 cooking_assemble.py
