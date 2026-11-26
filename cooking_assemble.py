@@ -65,6 +65,9 @@ def wrap_tokens(tokens, width):
             lines.append(cur); cur, cw = [], 0; sp = 0
         cur.append((wd, f, c)); cw += sp + w
     if cur: lines.append(cur)
+    # no widows: a lone last word takes one word from the line above
+    if len(lines) >= 2 and len(lines[-1]) == 1 and len(lines[-2]) >= 3:
+        lines[-1].insert(0, lines[-2].pop())
     return lines
 
 def words(text, f, c): return [(w, f, c) for w in text.split()]
@@ -73,10 +76,12 @@ def draw_line(d, x, y, line, shadow=True, center_w=None):
     if center_w is not None:
         lw = sum(tw(f, w) for w, f, c in line) + sum(tw(f, " ") for w, f, c in line[1:])
         x = x + (center_w - lw) / 2
+    masc = max(f.getmetrics()[0] for w, f, c in line)
     for i, (w, f, c) in enumerate(line):
         if i: x += tw(f, " ")
-        if shadow: d.text((x + 2, y + 3), w, font=f, fill=(0, 0, 0, 140))
-        d.text((x, y), w, font=f, fill=c + (255,) if len(c) == 3 else c)
+        yy = y + (masc - f.getmetrics()[0])
+        if shadow: d.text((x + 2, yy + 3), w, font=f, fill=(0, 0, 0, 140))
+        d.text((x, yy), w, font=f, fill=c + (255,) if len(c) == 3 else c)
         x += tw(f, w)
 
 class Card:
@@ -139,13 +144,15 @@ def step_card(n, title, line):
     c = Card(SAFE_R - SAFE_L)
     c.badge(f"Step {n}")
     c.text(words(title, font("Bold", 60), WHITE), 74, gap=20)
-    c.text(words(line, font("Regular", 46), SOFT), 62, gap=8)
+    c.text(words(disp(line), font("Regular", 46), SOFT), 62, gap=8)
     img, M, _ = c.render(); return img, place_bottom(img, M)
+
+def disp(t): return t.replace(" - ", " – ")
 
 def title_card(title, sub):
     c = Card(SAFE_R - SAFE_L, pad=50)
     c.text(words(title, font("Bold", 84), WHITE), 100, center=True)
-    c.text(words(sub, font("Medium", 46), ACCENT), 62, gap=18, center=True)
+    c.text(words(disp(sub), font("Medium", 46), ACCENT), 62, gap=18, center=True)
     img, M, _ = c.render()
     return img, (SAFE_L - M, int(1010 - img.size[1] / 2))
 
@@ -158,19 +165,37 @@ def ingr_card(items, page, pages):
     best = None
     for fs in (50, 48, 46):
         c = Card(SAFE_R - SAFE_L, pad=44)
-        hdr = words("Ingredients", font("Bold", 58), WHITE) + ([(f"{page}/{pages}", font("SemiBold", 40), ACCENT)] if pages > 1 else [])
+        hdr = words("Ingredients", font("Bold", 58), WHITE) + ([(f"  {page} of {pages}", font("Medium", 36), (220, 205, 185))] if pages > 1 else [])
         c.text(hdr, 76)
         c.rule(gap=6)
         lh = int(fs * 1.32)
         for i, it in enumerate(items):
             a, b = split_item(it)
-            tok = words(a, font("Regular", fs), WHITE) + (words("- " + b, font("SemiBold", fs), ACCENT) if b else [])
+            tok = words(a, font("Regular", fs), WHITE) + ([("– " + b.replace(" ", " "), font("SemiBold", fs), ACCENT)] if b else [])
             c.text(tok, lh, gap=(20 if i == 0 else 8), indent=40, bullet=True)
         img, M, nl = c.render()
         best = (img, M, nl, fs)
         if nl - 1 <= 9: break
     img, M, nl, fs = best
     return img, place_bottom(img, M), nl - 1, fs
+
+def item_lines(it, fs=46):
+    a, b = split_item(it); inner = SAFE_R - SAFE_L - 2 * 44 - 40
+    tok = words(a, font("Regular", fs), WHITE) + ([("– " + b.replace(" ", " "), font("SemiBold", fs), ACCENT)] if b else [])
+    return len(wrap_tokens(tok, inner))
+
+def balance_pages(pages, maxl=9):
+    if all(sum(item_lines(i) for i in pg) <= maxl for pg in pages): return pages
+    items = [i for pg in pages for i in pg]; ln = [item_lines(i) for i in items]
+    for n in (len(pages), len(pages) + 1, len(pages) + 2):
+        import itertools
+        best = None
+        for cuts in itertools.combinations(range(1, len(items)), n - 1):
+            b = (0,) + cuts + (len(items),); m = max(sum(ln[b[k]:b[k + 1]]) for k in range(n))
+            if best is None or m < best[0]: best = (m, b)
+        if best[0] <= maxl:
+            b = best[1]; return [items[b[k]:b[k + 1]] for k in range(n)]
+    return pages
 
 def hero_card(kicker, title, line):
     c = Card(SAFE_R - SAFE_L, pad=48)
@@ -190,9 +215,10 @@ def brand_png():
 def plan(dish):
     """Returns list of segments: {id, L (time on screen), cards:[(png, x, y, a, b)], get}"""
     clips = dish["clips"]; segs = []
+    dish["pages"] = balance_pages(dish["pages"])
     for c in clips:
         L = float(c["dur"])
-        if c["role"] == "ingredients": L = max(L, 8.0)
+        if c["role"] == "ingredients": L = max(L, 8.0, 1.95 + 2.45 * len(dish["pages"]) + 0.15)
         segs.append(dict(id=c["id"], role=c["role"], L=L, get=c.get("get"), step=c.get("step")))
     # missing clips: the shot before holds longer
     full = [s for s in segs if s["get"]]
