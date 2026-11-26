@@ -1,0 +1,29 @@
+name: cooking-assemble
+
+run-name: cooking ${{ inputs.tag }}
+
+# Cooking Shorts (chinnidiaries246): edit Meta AI clips into a finished vertical Short + silent copy.
+# The only input is a short-lived presigned link to a private job file; every clip / output inside it is also a presigned link.
+# This workflow uses NO repository secrets. The link is read from the event file and masked; it is never expanded into the log.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job: { description: 'presigned GET link of the job json', required: true }
+      tag: { description: 'short label for the run name', required: false, default: 'job' }
+
+jobs:
+  assemble:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: mask
+        run: U=$(jq -r .inputs.job "$GITHUB_EVENT_PATH"); echo "::add-mask::$U"
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: cooking_assemble.py, sparse-checkout-cone-mode: false }
+      - name: tools
+        run: |
+          sudo apt-get update -q > /dev/null && sudo apt-get install -y -q ffmpeg > /dev/null
+          python3 -m pip install -q --break-system-packages pillow numpy
+      - name: assemble
+        run: python3 cooking_assemble.py
