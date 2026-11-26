@@ -163,7 +163,7 @@ def split_item(s):
 
 def ingr_card(items, page, pages):
     best = None
-    for fs in (50, 48, 46):
+    for fs in (48,):
         c = Card(SAFE_R - SAFE_L, pad=44)
         hdr = words("Ingredients", font("Bold", 58), WHITE) + ([(f"  {page} of {pages}", font("Medium", 36), (220, 205, 185))] if pages > 1 else [])
         c.text(hdr, 76)
@@ -179,13 +179,13 @@ def ingr_card(items, page, pages):
     img, M, nl, fs = best
     return img, place_bottom(img, M), nl - 1, fs
 
-def item_lines(it, fs=46):
+def item_lines(it, fs=48):
     a, b = split_item(it); inner = SAFE_R - SAFE_L - 2 * 44 - 40
     tok = words(a, font("Regular", fs), WHITE) + ([("– " + b.replace(" ", " "), font("SemiBold", fs), ACCENT)] if b else [])
     return len(wrap_tokens(tok, inner))
 
 def balance_pages(pages, maxl=9):
-    if all(sum(item_lines(i) for i in pg) <= maxl for pg in pages): return pages
+    if all(sum(item_lines(i) for i in pg) <= maxl + 1 for pg in pages): return pages
     items = [i for pg in pages for i in pg]; ln = [item_lines(i) for i in items]
     for n in (len(pages), len(pages) + 1, len(pages) + 2):
         import itertools
