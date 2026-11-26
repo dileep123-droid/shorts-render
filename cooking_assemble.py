@@ -278,11 +278,11 @@ def plan(dish):
                 s["cards"].append((p, x, y, 0.4, max(0.4 + 2.6, min(endc, 0.4 + 4.6))))
             if s.get("hero_over"):
                 p = f"{WD}/{s['id']}_h.png"
-                x, y = outline_png([("Serve hot", "Bold", 60, ACCENT, 74), (dish["title"], "Bold", 84, WHITE, 100)], p)
+                x, y = outline_png([(dish.get("serve_line") or "Serve hot", "Bold", 56, ACCENT, 70), (dish["title"], "Bold", 84, WHITE, 100)], p)
                 s["cards"].append((p, x, y, L - 2.65, L + 5))
         else:
             p = f"{WD}/{s['id']}_h.png"
-            x, y = outline_png([("Serve hot", "Bold", 60, ACCENT, 74), (dish["title"], "Bold", 84, WHITE, 100)], p)
+            x, y = outline_png([(dish.get("serve_line") or "Serve hot", "Bold", 56, ACCENT, 70), (dish["title"], "Bold", 84, WHITE, 100)], p)
             s["cards"].append((p, x, y, 0.6, L + 5))
     return segs, cardinfo
 
@@ -414,6 +414,9 @@ def grab(src, t, out):
     return out
 
 # ---------------------------------------------------------------- main
+def putk(put_urls, k, path, ctype):
+    if k in put_urls: put(put_urls[k], path, ctype)
+
 def make_preview(final, out):
     sh(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", final, "-vf", "scale=720:1280:flags=lanczos", "-c:v", "libx264",
         "-preset", "slow", "-crf", "23", "-maxrate", "2800k", "-bufsize", "5600k", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
@@ -424,7 +427,7 @@ def do_dish(dish, mode, put_urls, report):
     if mode == "preview":
         src = fetch(dish["final_get"], f"{d}/{name}_{V}.mp4"); pv = f"{d}/{name}_{V}_preview.mp4"; make_preview(src, pv)
         report[name] = {"preview": probe(pv), "preview_mb": round(os.path.getsize(pv) / 1e6, 1)}
-        put(put_urls[f"{name}_{V}_preview.mp4"], pv, "video/mp4"); return
+        putk(put_urls, f"{name}_{V}_preview.mp4", pv, "video/mp4"); return
     segs, cardinfo = plan(dish)
     R = report.setdefault(name, {}); R["cards"] = cardinfo; R["missing"] = [c["id"] for c in dish["clips"] if not c.get("get")]
     R["segments"] = []
@@ -441,7 +444,7 @@ def do_dish(dish, mode, put_urls, report):
             for i, (png, x, y, a, b) in enumerate(s["cards"]):
                 im = bg.copy(); im.alpha_composite(Image.open(png), (x, y)); p = f"{d}/{s['id']}_{i}.png"; im.convert("RGB").save(p)
                 frames.append((p, f"{s['id']} c{i} {a:.1f}-{b:.1f}"))
-        sheet(frames, 5, f"{d}/layout.jpg"); put(put_urls[f"{name}_layout.jpg"], f"{d}/layout.jpg", "image/jpeg"); return
+        sheet(frames, 5, f"{d}/layout.jpg"); putk(put_urls, f"{name}_layout.jpg", f"{d}/layout.jpg", "image/jpeg"); return
     # download clips
     for s in segs:
         s["src"] = fetch(s["get"], f"{d}/{s['id'].replace('_hook', '')}.mp4")
@@ -457,10 +460,10 @@ def do_dish(dish, mode, put_urls, report):
         pr = probe(s["src"])
         for q, fr in enumerate((0.55, 0.5 + (pr["dur"] - 0.5) * 0.5, pr["dur"] - 0.35)):
             qa.append((grab(s["src"], fr, f"{d}/qa{i}_{q}.jpg"), f"{s['id']} raw {fr:.1f}s"))
-    sheet(txt, 4 if len(txt) > 6 else len(txt), f"{d}/sheet.jpg"); put(put_urls[f"{name}_sheet.jpg"], f"{d}/sheet.jpg", "image/jpeg")
+    sheet(txt, 4 if len(txt) > 6 else len(txt), f"{d}/sheet.jpg"); putk(put_urls, f"{name}_sheet.jpg", f"{d}/sheet.jpg", "image/jpeg")
     for q in range(0, len(qa), 6):
         qp = f"{d}/qa{q//6+1}.jpg"; sheet(qa[q:q+6], 3, qp, cell_w=480)
-        if f"{name}_qa{q//6+1}.jpg" in put_urls: put(put_urls[f"{name}_qa{q//6+1}.jpg"], qp, "image/jpeg")
+        putk(put_urls, f"{name}_qa{q//6+1}.jpg", qp, "image/jpeg")
     if mode == "sheet": return
     # join: xfade chain + acrossfade chain + brand tag + music + end fade
     music_bed(T, f"{d}/music.wav", seed=dish.get("seed", 7))
@@ -494,23 +497,33 @@ def do_dish(dish, mode, put_urls, report):
     fin = []
     for t_ in np.linspace(0.8, T - 0.6, 12):
         fin.append((grab(final, float(t_), f"{d}/fin{int(t_*10)}.jpg"), f"final {t_:.1f}s"))
-    sheet(fin, 6, f"{d}/final_sheet.jpg", cell_w=300); put(put_urls[f"{name}_final_sheet.jpg"], f"{d}/final_sheet.jpg", "image/jpeg")
-    pv = f"{d}/{name}_{V}_preview.mp4"; make_preview(final, pv)
-    R["preview"] = probe(pv); R["preview_mb"] = round(os.path.getsize(pv) / 1e6, 1)
-    put(put_urls[f"{name}_{V}.mp4"], final, "video/mp4"); put(put_urls[f"{name}_{V}_silent.mp4"], silent, "video/mp4")
-    put(put_urls[f"{name}_{V}_preview.mp4"], pv, "video/mp4")
+    sheet(fin, 6, f"{d}/final_sheet.jpg", cell_w=300); putk(put_urls, f"{name}_final_sheet.jpg", f"{d}/final_sheet.jpg", "image/jpeg")
+    pv = f"{d}/{name}_{V}_preview.mp4"
+    if f"{name}_{V}_preview.mp4" in put_urls:
+        make_preview(final, pv); R["preview"] = probe(pv); R["preview_mb"] = round(os.path.getsize(pv) / 1e6, 1)
+    putk(put_urls, f"{name}_{V}.mp4", final, "video/mp4"); putk(put_urls, f"{name}_{V}_silent.mp4", silent, "video/mp4")
+    putk(put_urls, f"{name}_{V}_preview.mp4", pv, "video/mp4")
+    R["status"] = "ok"
+    shutil.rmtree(d, ignore_errors=True)
     print("done", name, R["final"], R["final_lufs"], flush=True)
 
 def main():
     job = json.loads(fetch(json.load(open(os.environ["GITHUB_EVENT_PATH"]))["inputs"]["job"]))
     report = {"mode": job["mode"], "music": "procedurally generated in this runner by cooking_assemble.py music_bed() (numpy synthesis: drone, pad chords, "
               "Karplus-Strong plucks, noise shaker). Original audio, no samples or third-party recordings; free to use commercially, no attribution."}
+    ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))["inputs"]
+    n = len(json.loads(ev.get("shards") or "[0]")); shard = int(os.environ.get("SHARD") or 0)
+    rk = f"report_{shard}.json" if f"report_{shard}.json" in job["put"] else "report.json"
     try:
-        for dish in job["dishes"]:
-            do_dish(dish, job["mode"], job["put"], report)
+        for i, dish in enumerate(job["dishes"]):
+            if i % n != shard: continue
+            try:
+                do_dish(dish, job["mode"], job["put"], report)
+            except (Exception, SystemExit) as e:   # one bad dish never stops the others in this shard
+                report.setdefault(dish["name"], {})["status"] = f"FAILED {type(e).__name__}"; print("FAILED", dish["name"], flush=True)
     finally:
         p = WD + "/report.json"; json.dump(report, open(p, "w"), indent=1, default=str)
-        if "report.json" in job["put"]: put(job["put"]["report.json"], p, "application/json")
+        if rk in job["put"]: put(job["put"][rk], p, "application/json")
     print("ALL DONE", flush=True)
 
 if __name__ == "__main__":
