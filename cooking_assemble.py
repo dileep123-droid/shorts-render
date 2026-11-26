@@ -199,10 +199,11 @@ def balance_pages(pages, maxl=9):
 
 def hero_card(kicker, title, line):
     c = Card(SAFE_R - SAFE_L, pad=48)
-    c.text(words(kicker, font("SemiBold", 44), ACCENT), 60, center=True)
-    c.text(words(title, font("Bold", 76), WHITE), 92, gap=10, center=True)
-    c.text(words(line, font("Regular", 46), SOFT), 62, gap=12, center=True)
-    img, M, _ = c.render(); return img, place_bottom(img, M)
+    c.pad = 36
+    c.text(words(kicker, font("SemiBold", 40), ACCENT), 54, center=True)
+    c.text(words(title, font("Bold", 64), WHITE), 78, gap=6, center=True)
+    c.text(words(disp(line), font("Regular", 46), SOFT), 60, gap=10, center=True)
+    img, M, _ = c.render(); return img, (SAFE_L - M, SAFE_TOP + 96 - M)   # top third: the hero food stays clear
 
 def brand_png():
     f = font("Medium", 34); t = "chinnidiaries246"; w = int(tw(f, t)) + 44
