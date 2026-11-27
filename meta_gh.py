@@ -15,7 +15,7 @@ S3 = boto3.client("s3", endpoint_url=os.environ["CF_R2_ENDPOINT"], aws_access_ke
                   aws_secret_access_key=os.environ["CF_R2_SECRET_ACCESS_KEY"], region_name="auto", config=Config(signature_version="s3v4"))
 B = "eduorbex-media"
 def r2json(k): return json.loads(S3.get_object(Bucket=B, Key=k)["Body"].read())
-EP = r2json("s2work/meta_tunnel/endpoint.json")            # {"url": "wss://...trycloudflare.com/<secret>"}
+EP = {} if json.loads(S3.get_object(Bucket="eduorbex-media", Key=sys.argv[1])["Body"].read()).get("direct") else r2json("s2work/meta_tunnel/endpoint.json")   # 27 Nov owner: "direct" = GitHub internet, no laptop tunnel            # {"url": "wss://...trycloudflare.com/<secret>"}
 JOB = r2json(sys.argv[1])                                   # {"out": "<r2 prefix>/", "items": [{"id","prompt"}], "wait_min": 15}
 # 24 Nov: "session" = which Meta account (R2 key): session.json = Meta 3, session_1.json = Meta 1, session_2.json = Meta 2
 STATE = "/tmp/meta_state.json"; open(STATE, "wb").write(S3.get_object(Bucket=B, Key=JOB.get("session") or "s2work/meta_tunnel/session.json")["Body"].read())
@@ -53,7 +53,7 @@ async def pipe_client(reader, writer):
 def socks_thread():
     loop = asyncio.new_event_loop(); asyncio.set_event_loop(loop)
     loop.run_until_complete(asyncio.start_server(pipe_client, "127.0.0.1", 1080)); loop.run_forever()
-threading.Thread(target=socks_thread, daemon=True).start(); time.sleep(1)
+if not JOB.get("direct"): threading.Thread(target=socks_thread, daemon=True).start(); time.sleep(1)
 
 # ---------- 2) Chromium on meta.ai through the tunnel ----------
 from playwright.sync_api import sync_playwright
@@ -64,7 +64,7 @@ def shot(pg, name):
     try: S3.put_object(Bucket=B, Key=RES.rsplit("/", 1)[0] + f"/debug_{name}.png", Body=pg.screenshot())
     except Exception: pass
 with sync_playwright() as p:
-    br = p.chromium.launch(headless=True, proxy={"server": "socks5://127.0.0.1:1080", "bypass": "*.fbcdn.net,fbcdn.net,*.fbsbx.com,*.cdninstagram.com"}, args=["--disable-blink-features=AutomationControlled"])
+    br = p.chromium.launch(headless=True, **({} if JOB.get("direct") else {"proxy": {"server": "socks5://127.0.0.1:1080", "bypass": "*.fbcdn.net,fbcdn.net,*.fbsbx.com,*.cdninstagram.com"}}), args=["--disable-blink-features=AutomationControlled"])
     ctx = br.new_context(storage_state=STATE, viewport={"width": 1280, "height": 900}, locale="en-IN", timezone_id="Asia/Kolkata",
                          user_agent=JOB.get("ua") or None)
     ctx.route("**/*.{mp4,webm,m4s,woff,woff2,ttf}", lambda r: r.abort())   # never pull video through the tunnel
