@@ -1,0 +1,210 @@
+# Owner 27 Nov 2026 ~15:50: AI lane LONG-LIVED WORKER. One GitHub run = one Meta text account (1-3, never 4), up to ~5 h.
+# Keeps one logged-in browser and pulls jobs from a private R2 inbox every ~30 s, so there is no new run / install per batch.
+#   python meta_worker.py <R2 key of the worker config>
+#   config: {"name", "session", "ua", "tabs": 20, "dir": "s2work/ai_lane/workers/w<a>/", "max_min": 285, "hard_min": 305}
+#   <dir>inbox/<item>.json : {"name", "prompt", "out", "max_min", "stable_s", "chat"?}   (lane.py writes; the worker claims by deleting)
+#   SEND    : new items in groups of up to `tabs` tabs: open meta.ai, paste, send, save the chat link to <out>chat.json, CLOSE the tab.
+#   COLLECT : every ~45-60 s each sent chat is reopened (groups of `tabs`); an answer is harvested the moment it is stable
+#             (same length in two reads and two rounds, no Stop button) -> <out>answer.md, links.json, page_full.txt, result.json.
+#   <dir>heartbeat.json every loop. <dir>STOP (R2) -> stop claiming, finish collecting, exit. Logged out / checkpoint / limit -> exit at once.
+# This public log prints only item names, states and counts; prompts, chat links and answers live only in the private R2 bucket.
+import json, os, re, sys, time, random
+import boto3
+from botocore.config import Config
+S3 = boto3.client("s3", endpoint_url=os.environ["CF_R2_ENDPOINT"], aws_access_key_id=os.environ["CF_R2_ACCESS_KEY_ID"],
+                  aws_secret_access_key=os.environ["CF_R2_SECRET_ACCESS_KEY"], region_name="auto", config=Config(signature_version="s3v4"))
+B = "eduorbex-media"
+CFG = json.loads(S3.get_object(Bucket=B, Key=sys.argv[1])["Body"].read())
+assert "session_4" not in CFG["session"], "Meta 4 is never used for text"
+T0 = time.time(); TABS = max(1, int(CFG.get("tabs") or 10)); DIR = CFG["dir"]; INBOX = DIR + "inbox/"
+SOFT, HARD = 60 * CFG.get("max_min", 285), 60 * CFG.get("hard_min", 305)
+ACCOUNT = CFG["session"].rsplit("/", 1)[-1]; BASE = "https://www.meta.ai"
+def put(k, body, ct="text/plain; charset=utf-8"): S3.put_object(Bucket=B, Key=k, Body=body if isinstance(body, bytes) else body.encode("utf-8"), ContentType=ct)
+def get(k):
+    try: return S3.get_object(Bucket=B, Key=k)["Body"].read()
+    except Exception: return None
+def log(*a): print(time.strftime("%H:%M:%S"), *a, flush=True)
+STATE = "/tmp/meta_state.json"; open(STATE, "wb").write(get(CFG["session"]))
+from playwright.sync_api import sync_playwright
+LIMIT_WORDS = ["limit", "try again later", "log in", "suspicious", "confirm your identity", "checkpoint", "too many", "slow down"]
+JS_PAGE = "()=>(document.querySelector('main')||document.body).innerText"
+JS_ANSWER = """(snip)=>{
+ const norm=s=>s.replace(/\\s+/g,' ');
+ const root=document.querySelector('main')||document.body; let best=null, bl=0;
+ for (const e of root.querySelectorAll('div,article,section')) {
+   const t=e.innerText||''; if (t.length<=bl) continue;
+   if (norm(t).includes(snip)) continue;
+   best=e; bl=t.length;
+ }
+ if (window.__links) window.__links=best?[...best.querySelectorAll('a[href]')].map(a=>a.href):[];
+ return best?best.innerText:'';
+}"""
+JS_BUSY = """()=>[...document.querySelectorAll('button,[role=button]')].some(b=>/^(stop|stop generating|stop responding)$/i.test((b.getAttribute('aria-label')||b.innerText||'').trim()))"""
+JS_MORE = """()=>{let n=0; for (const b of document.querySelectorAll('main button, main [role=button]')) {
+  const t=(b.innerText||b.getAttribute('aria-label')||'').trim();
+  if (/^(continue|continue generating|keep going|show more|read more|see more)$/i.test(t)) { b.click(); n++; } } return n;}"""
+JS_SEND = """()=>{for (const b of document.querySelectorAll('button,[role=button]')) {
+  const l=(b.getAttribute('aria-label')||'').trim(); if (/^send( message)?$/i.test(l) && !b.disabled) { b.click(); return 1; } } return 0;}"""
+STOP = {"v": ""}; R = {}; ITEMS = {}; CNT = {"claimed": 0, "sent": 0, "done": 0, "failed": 0}
+def snip(it): return re.sub(r"\s+", " ", it["prompt"])[:60]
+def save_item(it):
+    r = R[it["name"]]; r["minutes"] = round((time.time() - it["claimed_t"]) / 60, 1)
+    put(it["out"] + "result.json", json.dumps(r, indent=1, ensure_ascii=False), "application/json")
+def evidence(pg, it):
+    try: put(it["out"] + "fail.png", pg.screenshot(full_page=False), "image/png")
+    except Exception: pass
+    try: put(it["out"] + "page_full.txt", pg.evaluate(JS_PAGE))
+    except Exception: pass
+def set_state(it, st, pg=None):
+    R[it["name"]]["state"] = st; log(it["name"], "STATE", st)
+    if pg is not None and not st.startswith("DONE"): evidence(pg, it)
+    if re.search(r"LOGGED OUT|CHECKPOINT|NO PROMPT BOX|limit", st, re.I): STOP["v"] = st
+    if not st.startswith(("sent", "started")): it["finished"] = True; CNT["done" if st.startswith("DONE") else "failed"] += 1
+    save_item(it)
+def close(pg):
+    try: pg and pg.close()
+    except Exception: pass
+def heartbeat(extra=None):
+    hb = {"t": time.time(), "at": time.strftime("%F %T"), "minutes": round((time.time() - T0) / 60, 1), "account": ACCOUNT, "tabs": TABS,
+          "open": sum(1 for it in ITEMS.values() if not it.get("finished")), **CNT, "account_stop": STOP["v"], "claiming": claiming()}
+    if extra: hb.update(extra)
+    put(DIR + "heartbeat.json", json.dumps(hb), "application/json")
+def claiming(): return not STOP["v"] and time.time() - T0 < SOFT and get(DIR + "STOP") is None
+
+with sync_playwright() as p:
+    br = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
+    ctx = br.new_context(storage_state=STATE, viewport={"width": 1280, "height": 900}, locale="en-IN", timezone_id="Asia/Kolkata",
+                         user_agent=CFG.get("ua") or None)
+    ctx.route("**/*.{mp4,webm,m4s}", lambda r: r.abort())
+
+    def open_and_type(it):
+        pg = None
+        try:
+            pg = ctx.new_page(); pg.set_default_timeout(90000)
+            pg.goto(BASE + "/", wait_until="domcontentloaded", timeout=120000)
+        except Exception as e: set_state(it, "LOAD FAILED " + type(e).__name__, pg); close(pg); return None
+        time.sleep(4)
+        if re.search(r"login|checkpoint|two_step|recover", pg.url, re.I): set_state(it, "LOGGED OUT / CHECKPOINT (url)", pg); close(pg); return None
+        ed = pg.locator("[data-lexical-editor]:visible, [contenteditable='true']:visible, textarea:visible").first
+        try: ed.wait_for(state="visible", timeout=60000)
+        except Exception: set_state(it, "NO PROMPT BOX (logged out or checkpoint?)", pg); close(pg); return None
+        try: li = pg.evaluate("()=>[...document.querySelectorAll('a,button,[role=button]')].some(b=>/^(log in|login|sign in)$/i.test((b.innerText||'').trim()))")
+        except Exception: li = False
+        if li: set_state(it, "LOGGED OUT (log-in button on page)", pg); close(pg); return None
+        time.sleep(1.5); ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(2.5); pg.keyboard.press("Enter")
+        return pg
+
+    def send_group(group):
+        pages = []
+        for it in group:
+            if STOP["v"]: break
+            pg = open_and_type(it)
+            if pg: pages.append((it, pg))
+            time.sleep(random.uniform(2, 5))
+        t = time.time(); resend = 0
+        while time.time() - t < 60:
+            waiting = [(it, pg) for it, pg in pages if pg.url.rstrip("/") == BASE]
+            if not waiting: break
+            if time.time() - t > 12 * (resend + 1) and resend < 3:
+                resend += 1
+                for it, pg in waiting:
+                    try:
+                        if not pg.evaluate(JS_SEND): pg.keyboard.press("Enter")
+                    except Exception: pass
+            time.sleep(1)
+        for it, pg in pages:
+            url = pg.url if pg.url.rstrip("/") != BASE else None
+            if url:
+                it["chat"] = url; it["sent_t"] = time.time(); R[it["name"]].update({"state": "sent", "sent_after_min": round((time.time() - it["claimed_t"]) / 60, 1)})
+                put(it["out"] + "chat.json", json.dumps({"chat": url, "account": ACCOUNT}), "application/json"); save_item(it); CNT["sent"] += 1; log(it["name"], "SENT")
+            else:
+                try: body = pg.evaluate(JS_PAGE).lower()[-600:]
+                except Exception: body = ""
+                set_state(it, "NOT SENT" + (" (limit/login/check words on page)" if any(k in body for k in LIMIT_WORDS) else ""), pg)
+            close(pg)
+
+    def finish(it, pg, stable, ans):
+        r = R[it["name"]]; r["stable"] = stable
+        try: full = pg.evaluate(JS_PAGE)
+        except Exception: full = ""
+        try: links = pg.evaluate("(snip)=>{window.__links=[1]; (" + JS_ANSWER + ")(snip); return window.__links;}", snip(it))
+        except Exception: links = []
+        put(it["out"] + "page_full.txt", full); put(it["out"] + "answer.md", ans); put(it["out"] + "links.json", json.dumps(links, ensure_ascii=False), "application/json")
+        r.update({"anchor_links": len(links), "chars": len(ans), "answer_after_min": round((time.time() - it["sent_t"]) / 60, 1)})
+        if len(ans) < 300:
+            lim = any(k in full.lower()[-1500:] for k in LIMIT_WORDS)
+            set_state(it, "SHORT/NO ANSWER" + (" (limit/login words)" if lim else ""), pg)
+        else: set_state(it, "DONE" if stable else "DONE (hit max time, may be cut)")
+
+    def collect_group(group):
+        tabs = []
+        for it in group:
+            pg = None
+            try:
+                pg = ctx.new_page(); pg.set_default_timeout(90000); pg.goto(it["chat"], wait_until="domcontentloaded", timeout=120000)
+                if re.search(r"login|checkpoint|two_step|recover", pg.url, re.I): set_state(it, "LOGGED OUT / CHECKPOINT (url)", pg); close(pg); continue
+                tabs.append((it, pg))
+            except Exception as e: log(it["name"], "collect retry", type(e).__name__); close(pg)
+        time.sleep(8)
+        first = {}
+        for it, pg in tabs:
+            try: first[it["name"]] = (pg.evaluate(JS_ANSWER, snip(it)), pg.evaluate(JS_BUSY))
+            except Exception: first[it["name"]] = ("", True)
+        time.sleep(15)
+        for it, pg in tabs:
+            try: ans = pg.evaluate(JS_ANSWER, snip(it)); busy = pg.evaluate(JS_BUSY)
+            except Exception: ans, busy = "", True
+            a0, b0 = first[it["name"]]; n, prev = len(ans), it.get("prev_len", -1)
+            stable = n > 200 and n == len(a0) and n == prev and not busy and not b0   # two identical reads in two rounds
+            if stable:
+                try: more = pg.evaluate(JS_MORE)
+                except Exception: more = 0
+                if more and it.get("clicks", 0) < 5: it["clicks"] = it.get("clicks", 0) + more; stable = False
+            it["prev_len"] = n
+            if stable: finish(it, pg, True, ans)
+            elif time.time() - it["sent_t"] > 60 * it.get("max_min", 15): finish(it, pg, False, ans)
+            close(pg)
+
+    def claim():
+        new = []
+        try: objs = S3.list_objects_v2(Bucket=B, Prefix=INBOX).get("Contents", [])
+        except Exception: objs = []
+        for o in sorted(objs, key=lambda o: o["Key"]):
+            b = get(o["Key"])
+            try: S3.delete_object(Bucket=B, Key=o["Key"])
+            except Exception: continue
+            if not b: continue
+            it = json.loads(b); it["claimed_t"] = time.time()
+            R[it["name"]] = {"name": it["name"], "account": ACCOUNT, "state": "started", "worker": CFG.get("name")}
+            if it.get("chat"): it["sent_t"] = time.time() - 120; R[it["name"]]["state"] = "sent"   # collect-only item
+            ITEMS[it["name"]] = it; new.append(it); CNT["claimed"] += 1
+        return new
+
+    log("worker", CFG.get("name"), "account", ACCOUNT, "tabs", TABS)
+    last_collect = 0
+    while True:
+        if claiming():
+            fresh = [it for it in claim() if not it.get("chat")]
+            for i in range(0, len(fresh), TABS):
+                if STOP["v"]: break
+                send_group(fresh[i:i + TABS])
+            for it in fresh:
+                if not it.get("chat") and R[it["name"]]["state"] == "started": set_state(it, "NOT STARTED (account stop: " + STOP["v"] + ")")
+        if STOP["v"]: break
+        due = [it for it in ITEMS.values() if it.get("chat") and not it.get("finished") and time.time() - it["sent_t"] > 40]
+        if due and time.time() - last_collect > 30:
+            last_collect = time.time()
+            for i in range(0, len(due), TABS):
+                collect_group(due[i:i + TABS])
+                if STOP["v"]: break
+        heartbeat()
+        open_ = [it for it in ITEMS.values() if not it.get("finished")]
+        if not claiming() and not open_: break
+        if time.time() - T0 > HARD: break
+        time.sleep(random.uniform(15, 25))
+    for it in ITEMS.values():
+        if not it.get("finished"):
+            R[it["name"]]["state"] = "SENT, NOT COLLECTED" if it.get("chat") else "NOT STARTED (worker exit)"; save_item(it)
+    heartbeat({"exited": True})
+    log("worker end", CNT, "minutes", round((time.time() - T0) / 60, 1), "stop", STOP["v"][:60])
+    br.close()
