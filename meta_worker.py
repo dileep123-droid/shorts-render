@@ -134,6 +134,17 @@ with sync_playwright() as p:
         except Exception: li = False
         if li: set_state(it, "LOGGED OUT (log-in button on page)", pg); close(pg); return None
         ensure_mode(pg, it)
+        if it.get("attach"):   # owner 27 Nov 20:10 test: bulk material as attached files, short typed instruction
+            paths = []
+            for a in it["attach"]:
+                b = get(a["key"])
+                if b:
+                    fp = "/tmp/attach_" + re.sub(r"[^A-Za-z0-9_.-]", "_", a.get("name", "file.txt")); open(fp, "wb").write(b); paths.append(fp)
+            try:
+                pg.locator("input[type=file]").first.set_input_files(paths); time.sleep(6)
+                R[it["name"]]["attached"] = [os.path.basename(x) for x in paths]
+            except Exception as e:
+                R[it["name"]]["attach_error"] = type(e).__name__; log(it["name"], "attach failed", type(e).__name__)
         time.sleep(1.5); ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(2.5); pg.keyboard.press("Enter")
         return pg
 
