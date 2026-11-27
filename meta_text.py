@@ -59,7 +59,7 @@ with sync_playwright() as p:
     except Exception as e: fail("LOAD FAILED " + type(e).__name__)
     time.sleep(6)
     if re.search(r"login|checkpoint|two_step|recover", pg.url, re.I): fail("LOGGED OUT / CHECKPOINT (url)")
-    ed = pg.locator("[data-lexical-editor], [contenteditable='true'], textarea").first
+    ed = pg.locator("[data-lexical-editor], [contenteditable='true']").first   # 27 Nov: no 'textarea' - a hidden one matched first
     try: ed.wait_for(state="visible", timeout=60000)
     except Exception: fail("NO PROMPT BOX (logged out or checkpoint?)")
     # logged-in check: a logged-out meta.ai still shows a box, but also a prominent "Log in" button
@@ -67,6 +67,8 @@ with sync_playwright() as p:
         li = pg.evaluate("()=>[...document.querySelectorAll('a,button,[role=button]')].some(b=>/^(log in|login|sign in)$/i.test((b.innerText||'').trim()))")
     except Exception: li = False
     res["login_button_seen"] = bool(li)
+    try: res["mode_button"] = pg.evaluate("()=>[...document.querySelectorAll('button')].map(b=>(b.innerText||'').trim()).filter(t=>/^(thinking|instant|fast|deep research|research)$/i.test(t))")
+    except Exception: pass
     if li: fail("LOGGED OUT (log-in button on page)")
     time.sleep(1.5); ed.click(); pg.keyboard.insert_text(PROMPT); time.sleep(2); pg.keyboard.press("Enter")
     sent = False
