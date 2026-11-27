@@ -6,7 +6,7 @@
 #   SEND    : new items in groups of up to `tabs` tabs: open meta.ai, paste, send, save the chat link to <out>chat.json, CLOSE the tab.
 #   COLLECT : every ~45-60 s each sent chat is reopened (groups of `tabs`); an answer is harvested the moment it is stable
 #             (same length in two reads and two rounds, no Stop button) -> <out>answer.md, links.json, page_full.txt, result.json.
-#   Exits after idle_min (20) with nothing to do. <dir>heartbeat.json every loop. <dir>STOP (R2) -> stop claiming, finish collecting, exit. Logged out / checkpoint / limit -> exit at once.
+#   Exits after idle_min (20) with nothing to do. <dir>heartbeat.json every loop. <dir>STOP_ALL or <dir>STOP_<name> (R2) -> stop claiming, finish collecting, exit. Logged out / checkpoint / limit -> exit at once.
 # This public log prints only item names, states and counts; prompts, chat links and answers live only in the private R2 bucket.
 import json, os, re, sys, time, random
 import boto3
@@ -89,7 +89,7 @@ def heartbeat(extra=None):
           "open": sum(1 for it in ITEMS.values() if not it.get("finished")), **CNT, "account_stop": STOP["v"], "claiming": claiming()}
     if extra: hb.update(extra)
     put(DIR + "heartbeat.json", json.dumps(hb), "application/json")
-def claiming(): return not STOP["v"] and time.time() - T0 < SOFT and get(DIR + "STOP") is None
+def claiming(): return not STOP["v"] and time.time() - T0 < SOFT and get(DIR + "STOP_ALL") is None and get(DIR + "STOP_" + CFG.get("name", "")) is None
 
 with sync_playwright() as p:
     br = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
