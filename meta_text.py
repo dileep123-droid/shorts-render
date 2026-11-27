@@ -59,7 +59,7 @@ with sync_playwright() as p:
     except Exception as e: fail("LOAD FAILED " + type(e).__name__)
     time.sleep(6)
     if re.search(r"login|checkpoint|two_step|recover", pg.url, re.I): fail("LOGGED OUT / CHECKPOINT (url)")
-    ed = pg.locator("[data-lexical-editor], [contenteditable='true']").first   # 27 Nov: no 'textarea' - a hidden one matched first
+    ed = pg.locator("[data-lexical-editor]:visible, [contenteditable='true']:visible, textarea:visible").first   # 27 Nov: visible only (Meta 1 page variant)
     try: ed.wait_for(state="visible", timeout=60000)
     except Exception: fail("NO PROMPT BOX (logged out or checkpoint?)")
     # logged-in check: a logged-out meta.ai still shows a box, but also a prominent "Log in" button
