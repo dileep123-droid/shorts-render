@@ -43,6 +43,26 @@ JS_BUSY = """()=>[...document.querySelectorAll('button,[role=button]')].some(b=>
 JS_MORE = """()=>{let n=0; for (const b of document.querySelectorAll('main button, main [role=button]')) {
   const t=(b.innerText||b.getAttribute('aria-label')||'').trim();
   if (/^(continue|continue generating|keep going|show more|read more|see more)$/i.test(t)) { b.click(); n++; } } return n;}"""
+# mode switch (owner 27 Nov 16:35): items with "mode": "thinking" get Meta's Thinking mode; best effort, the mode seen is saved in result.json
+JS_MODES = """()=>[...document.querySelectorAll('button,[role=button],[role=combobox]')].map(b=>(b.innerText||b.getAttribute('aria-label')||'').trim())
+  .filter(t=>/^(thinking|think|instant|fast|auto|deep think|reasoning)\\b/i.test(t)).slice(0,6)"""
+JS_CLICK_TEXT = """(rx)=>{const r=new RegExp(rx,'i'); for (const b of document.querySelectorAll('button,[role=button],[role=menuitem],[role=option],[role=menuitemradio],li,div[role]')) {
+  const t=(b.innerText||b.getAttribute('aria-label')||'').trim(); if (r.test(t) && t.length<60) { b.click(); return t; } } return '';}"""
+def ensure_mode(pg, it):
+    want = it.get("mode")
+    if not want: return
+    try:
+        seen = pg.evaluate(JS_MODES); R[it["name"]]["mode_before"] = seen
+        if any(re.match(want, x, re.I) for x in seen): R[it["name"]]["mode"] = want; return
+        if seen:
+            pg.evaluate(JS_CLICK_TEXT, "^(" + "|".join(re.escape(x) for x in seen[:1]) + ")$"); time.sleep(1.2)
+            got = pg.evaluate(JS_CLICK_TEXT, "^" + want + "\\b"); time.sleep(1.2)
+            after = pg.evaluate(JS_MODES); R[it["name"]]["mode_after"] = after
+            R[it["name"]]["mode"] = want if (got or any(re.match(want, x, re.I) for x in after)) else "unknown"
+            try: pg.keyboard.press("Escape")
+            except Exception: pass
+        else: R[it["name"]]["mode"] = "no mode button"
+    except Exception as e: R[it["name"]]["mode"] = "mode error " + type(e).__name__
 JS_SEND = """()=>{for (const b of document.querySelectorAll('button,[role=button]')) {
   const l=(b.getAttribute('aria-label')||'').trim(); if (/^send( message)?$/i.test(l) && !b.disabled) { b.click(); return 1; } } return 0;}"""
 STOP = {"v": ""}; R = {}; ITEMS = {}; CNT = {"claimed": 0, "sent": 0, "done": 0, "failed": 0}
@@ -91,6 +111,7 @@ with sync_playwright() as p:
         try: li = pg.evaluate("()=>[...document.querySelectorAll('a,button,[role=button]')].some(b=>/^(log in|login|sign in)$/i.test((b.innerText||'').trim()))")
         except Exception: li = False
         if li: set_state(it, "LOGGED OUT (log-in button on page)", pg); close(pg); return None
+        ensure_mode(pg, it)
         time.sleep(1.5); ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(2.5); pg.keyboard.press("Enter")
         return pg
 
@@ -130,7 +151,9 @@ with sync_playwright() as p:
         try: links = pg.evaluate("(snip)=>{window.__links=[1]; (" + JS_ANSWER + ")(snip); return window.__links;}", snip(it))
         except Exception: links = []
         put(it["out"] + "page_full.txt", full); put(it["out"] + "answer.md", ans); put(it["out"] + "links.json", json.dumps(links, ensure_ascii=False), "application/json")
-        r.update({"anchor_links": len(links), "chars": len(ans), "answer_after_min": round((time.time() - it["sent_t"]) / 60, 1)})
+        m = re.search(r"Answered with (\d+) sub-?agents", full or "", re.I)
+        r.update({"anchor_links": len(links), "chars": len(ans), "answer_after_min": round((time.time() - it["sent_t"]) / 60, 1),
+                  "subagents": int(m.group(1)) if m else 0, "thinking_shown": bool(re.search(r"Show thinking|Thought for", full or ""))})
         if len(ans) < 300:
             lim = any(k in full.lower()[-1500:] for k in LIMIT_WORDS)
             set_state(it, "SHORT/NO ANSWER" + (" (limit/login words)" if lim else ""), pg)
