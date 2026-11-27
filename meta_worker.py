@@ -181,8 +181,12 @@ with sync_playwright() as p:
         r.update({"anchor_links": len(links), "chars": len(ans), "answer_after_min": round((time.time() - it["sent_t"]) / 60, 1),
                   "subagents": int(m.group(1)) if m else 0, "thinking_shown": bool(re.search(r"Show thinking|Thought for", full or ""))})
         if len(ans) < 300:
-            lim = any(k in full.lower()[-1500:] for k in LIMIT_WORDS)
-            set_state(it, "SHORT/NO ANSWER" + (" (limit/login words)" if lim else ""), pg)
+            # look for limit words OUTSIDE our own prompt text (27 Nov 18:25: the prompt itself contains "limit" / "log in" -> false account stops)
+            page = (full or "").lower()
+            for chunk in re.split(r"\n\s*\n", it["prompt"].lower()):
+                if len(chunk) > 40: page = page.replace(chunk.strip(), " ")
+            lim = any(k in page[-1500:] for k in LIMIT_WORDS)
+            set_state(it, "SHORT/NO ANSWER" + (" (limit/login words)" if lim else " (no answer yet; prompt shown, nothing written)"), pg)
         else: set_state(it, "DONE" if stable else "DONE (hit max time, may be cut)")
 
     def collect_group(group):
