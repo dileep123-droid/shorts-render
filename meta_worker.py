@@ -48,21 +48,38 @@ JS_MODES = """()=>[...document.querySelectorAll('button,[role=button],[role=comb
   .filter(t=>/^(thinking|think|instant|fast|auto|deep think|reasoning)\\b/i.test(t)).slice(0,6)"""
 JS_CLICK_TEXT = """(rx)=>{const r=new RegExp(rx,'i'); for (const b of document.querySelectorAll('button,[role=button],[role=menuitem],[role=option],[role=menuitemradio],li,div[role]')) {
   const t=(b.innerText||b.getAttribute('aria-label')||'').trim(); if (r.test(t) && t.length<60) { b.click(); return t; } } return '';}"""
+JS_BUTTONS = """()=>[...document.querySelectorAll('button,[role=button],[role=combobox],[aria-haspopup]')].filter(b=>b.offsetParent!==null)
+  .map(b=>((b.innerText||'').trim()+' | '+(b.getAttribute('aria-label')||'')).slice(0,50)).filter(t=>t.length>3).slice(0,60)"""
+JS_MENU = """()=>[...document.querySelectorAll('[role=menuitem],[role=option],[role=menuitemradio],[role=radio],[role=listbox] *')].filter(b=>b.offsetParent!==null)
+  .map(b=>(b.innerText||b.getAttribute('aria-label')||'').trim().slice(0,50)).filter(t=>t).slice(0,30)"""
+DEBUG = {"n": 0}
 def ensure_mode(pg, it):
+    """switch Meta's composer mode picker to `mode` (e.g. thinking). Saves what it saw; the first 3 items also save a screenshot
+    to <dir>debug/ so the real picker can be inspected."""
     want = it.get("mode")
     if not want: return
+    r = R[it["name"]]; dbg = DEBUG["n"] < 3; DEBUG["n"] += 1
     try:
-        seen = pg.evaluate(JS_MODES); R[it["name"]]["mode_before"] = seen
-        if any(re.match(want, x, re.I) for x in seen): R[it["name"]]["mode"] = want; return
-        if seen:
-            pg.evaluate(JS_CLICK_TEXT, "^(" + "|".join(re.escape(x) for x in seen[:1]) + ")$"); time.sleep(1.2)
-            got = pg.evaluate(JS_CLICK_TEXT, "^" + want + "\\b"); time.sleep(1.2)
-            after = pg.evaluate(JS_MODES); R[it["name"]]["mode_after"] = after
-            R[it["name"]]["mode"] = want if (got or any(re.match(want, x, re.I) for x in after)) else "unknown"
+        seen = pg.evaluate(JS_MODES); r["mode_before"] = seen
+        if dbg: r["buttons"] = pg.evaluate(JS_BUTTONS)
+        if any(re.match(want, x, re.I) for x in seen): r["mode"] = want + " (already)"
+        elif seen:
+            pg.evaluate(JS_CLICK_TEXT, "^(" + "|".join(re.escape(x) for x in seen[:1]) + ")$"); time.sleep(1.5)
+            if dbg:
+                r["menu"] = pg.evaluate(JS_MENU)
+                try: put(DIR + "debug/" + it["name"] + "_menu.png", pg.screenshot(full_page=False), "image/png")
+                except Exception: pass
+            got = pg.evaluate(JS_CLICK_TEXT, "^" + want + "\\b"); time.sleep(1.5); r["mode_clicked"] = got
             try: pg.keyboard.press("Escape")
             except Exception: pass
-        else: R[it["name"]]["mode"] = "no mode button"
-    except Exception as e: R[it["name"]]["mode"] = "mode error " + type(e).__name__
+            after = pg.evaluate(JS_MODES); r["mode_after"] = after
+            r["mode"] = want if any(re.match(want, x, re.I) for x in after) else ("clicked " + got[:30] if got else "not switched")
+        else: r["mode"] = "no mode button"
+        if dbg:
+            try: put(DIR + "debug/" + it["name"] + "_after.png", pg.screenshot(full_page=False), "image/png")
+            except Exception: pass
+    except Exception as e: r["mode"] = "mode error " + type(e).__name__
+    log(it["name"], "mode", r.get("mode"))
 JS_SEND = """()=>{for (const b of document.querySelectorAll('button,[role=button]')) {
   const l=(b.getAttribute('aria-label')||'').trim(); if (/^send( message)?$/i.test(l) && !b.disabled) { b.click(); return 1; } } return 0;}"""
 STOP = {"v": ""}; R = {}; ITEMS = {}; CNT = {"claimed": 0, "sent": 0, "done": 0, "failed": 0}
@@ -87,8 +104,9 @@ def close(pg):
 def heartbeat(extra=None):
     hb = {"t": time.time(), "at": time.strftime("%F %T"), "minutes": round((time.time() - T0) / 60, 1), "account": ACCOUNT, "tabs": TABS,
           "open": sum(1 for it in ITEMS.values() if not it.get("finished")), **CNT, "account_stop": STOP["v"], "claiming": claiming()}
+    hb["name"] = CFG.get("name")
     if extra: hb.update(extra)
-    put(DIR + "heartbeat.json", json.dumps(hb), "application/json")
+    put(DIR + "hb_" + CFG.get("name", "x") + ".json", json.dumps(hb), "application/json")   # one heartbeat file per worker run
 def claiming(): return not STOP["v"] and time.time() - T0 < SOFT and get(DIR + "STOP_ALL") is None and get(DIR + "STOP_" + CFG.get("name", "")) is None
 
 with sync_playwright() as p:
