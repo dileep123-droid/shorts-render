@@ -15,7 +15,7 @@ S3 = boto3.client("s3", endpoint_url=os.environ["CF_R2_ENDPOINT"], aws_access_ke
                   aws_secret_access_key=os.environ["CF_R2_SECRET_ACCESS_KEY"], region_name="auto", config=Config(signature_version="s3v4"))
 B = "eduorbex-media"
 CFG = json.loads(S3.get_object(Bucket=B, Key=sys.argv[1])["Body"].read())
-assert "session_4" not in CFG["session"], "Meta 4 is never used for text"
+# owner 28 Nov: Meta 4 allowed for text too (was: assert "session_4" not in CFG["session"], "Meta 4 is never u)
 T0 = time.time(); TABS = max(1, int(CFG.get("tabs") or 10)); DIR = CFG["dir"]; INBOX = DIR + "inbox/"
 SOFT, HARD = 60 * CFG.get("max_min", 285), 60 * CFG.get("hard_min", 305)
 ACCOUNT = CFG["session"].rsplit("/", 1)[-1]; BASE = "https://www.meta.ai"
