@@ -20,7 +20,7 @@ S3 = boto3.client("s3", endpoint_url=os.environ["CF_R2_ENDPOINT"], aws_access_ke
                   aws_secret_access_key=os.environ["CF_R2_SECRET_ACCESS_KEY"], region_name="auto", config=Config(signature_version="s3v4"))
 B = "eduorbex-media"
 JOB = json.loads(S3.get_object(Bucket=B, Key=sys.argv[1])["Body"].read())
-assert "session_4" not in JOB["session"], "Meta 4 is never used for text"
+# owner 28 Nov: Meta 4 allowed for text too (was: assert "session_4" not in JOB["session"], "Meta 4 is never u)
 T0 = time.time()
 if "items" not in JOB:   # pilot single-job format -> a batch of one
     JOB = {**JOB, "tabs": 1, "items": [{"name": JOB["name"], "prompt": JOB["prompt"], "out": JOB["out"],
