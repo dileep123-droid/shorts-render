@@ -1,0 +1,26 @@
+name: meta-text
+
+run-name: meta-text ${{ inputs.job }}
+
+# Owner 27 Nov 2026: AI-lane pilot - Meta AI chat as a text draft writer, on GitHub's own internet (no laptop tunnel).
+# Job (prompt + which Meta session) is read from the private R2 bucket at run time; this public log prints only states/counts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job: { description: 'R2 key of the job json (s2work/ai_lane/jobs/<name>.json)', required: true }
+
+jobs:
+  text:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+      CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+      CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q playwright==1.48.0 boto3 && python -m playwright install --with-deps chromium > /dev/null
+      - run: python meta_text.py "${{ inputs.job }}"
