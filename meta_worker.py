@@ -80,6 +80,10 @@ def ensure_mode(pg, it):
             except Exception: pass
     except Exception as e: r["mode"] = "mode error " + type(e).__name__
     log(it["name"], "mode", r.get("mode"))
+JS_SOURCES = """()=>{const out=[], seen=new Set(); for (const a of document.querySelectorAll('a[href^="http"]')) {
+  const h=a.href; if (seen.has(h) || /meta[.]ai|facebook[.]com|instagram[.]com|whatsapp[.]com/.test(h)) continue; seen.add(h);
+  let d=''; try { d=new URL(h).hostname.replace(/^www[.]/,''); } catch(e) {}
+  out.push({domain:d, url:h, text:(a.innerText||'').trim().slice(0,120)}); } return out.slice(0,300);}"""
 JS_SEND = """()=>{for (const b of document.querySelectorAll('button,[role=button]')) {
   const l=(b.getAttribute('aria-label')||'').trim(); if (/^send( message)?$/i.test(l) && !b.disabled) { b.click(); return 1; } } return 0;}"""
 STOP = {"v": ""}; R = {}; ITEMS = {}; CNT = {"claimed": 0, "sent": 0, "done": 0, "failed": 0}
@@ -170,6 +174,10 @@ with sync_playwright() as p:
         except Exception: links = []
         put(it["out"] + "page_full.txt", full); put(it["out"] + "answer.md", ans); put(it["out"] + "links.json", json.dumps(links, ensure_ascii=False), "application/json")
         m = re.search(r"Answered with (\d+) sub-?agents", full or "", re.I)
+        try:   # every link on the page outside the answer text = the Steps / Sources panel; saved for fact-checking
+            src = pg.evaluate(JS_SOURCES)
+            put(it["out"] + "sources.json", json.dumps(src, ensure_ascii=False), "application/json"); r["sources"] = len(src)
+        except Exception: pass
         r.update({"anchor_links": len(links), "chars": len(ans), "answer_after_min": round((time.time() - it["sent_t"]) / 60, 1),
                   "subagents": int(m.group(1)) if m else 0, "thinking_shown": bool(re.search(r"Show thinking|Thought for", full or ""))})
         if len(ans) < 300:
@@ -221,7 +229,7 @@ with sync_playwright() as p:
             ITEMS[it["name"]] = it; new.append(it); CNT["claimed"] += 1
         return new
 
-    log("worker", CFG.get("name"), "account", ACCOUNT, "tabs", TABS)
+    log("worker", CFG.get("name"), "account", ACCOUNT, "tabs", TABS); heartbeat({"phase": "start"})
     last_collect = 0; last_act = time.time(); IDLE = 60 * CFG.get("idle_min", 20)
     while True:
         if claiming():
@@ -230,7 +238,7 @@ with sync_playwright() as p:
             fresh = [it for it in got if not it.get("chat")]
             for i in range(0, len(fresh), TABS):
                 if STOP["v"]: break
-                send_group(fresh[i:i + TABS])
+                send_group(fresh[i:i + TABS]); heartbeat({"phase": "sending"})
             for it in fresh:
                 if not it.get("chat") and R[it["name"]]["state"] == "started": set_state(it, "NOT STARTED (account stop: " + STOP["v"] + ")")
         if STOP["v"]: break
