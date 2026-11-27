@@ -203,7 +203,7 @@ with sync_playwright() as p:
                     for iid, pg in grp:
                         if iid in got: continue
                         try:
-                            v = pg.evaluate("()=>[...document.querySelectorAll('main video')].map(e=>e.currentSrc||e.src||(e.querySelector('source')||{}).src).filter(x=>x && /fbcdn|scontent/.test(x))")
+                            v = pg.evaluate("()=>[...document.querySelectorAll('video')].map(e=>e.currentSrc||e.src||(e.querySelector('source')||{}).src).filter(x=>x && /^https?:/.test(x))")
                             if v: got[iid] = v[0]
                         except Exception: pass
                     if len(got) == len(grp): break
@@ -249,7 +249,7 @@ with sync_playwright() as p:
                 pg.goto(url, wait_until="domcontentloaded", timeout=120000); v = []
                 for _ in range(15):
                     time.sleep(1)
-                    v = pg.evaluate("()=>[...document.querySelectorAll('main video')].map(e=>e.currentSrc||e.src||(e.querySelector('source')||{}).src).filter(x=>x && /fbcdn|scontent/.test(x))")
+                    v = pg.evaluate("()=>[...document.querySelectorAll('video')].map(e=>e.currentSrc||e.src||(e.querySelector('source')||{}).src).filter(x=>x && /^https?:/.test(x))")
                     if v: break
                 if v:   # 3) direct download (no tunnel) -> R2
                     data = urllib.request.urlopen(urllib.request.Request(v[0], headers={"User-Agent": "Mozilla/5.0"}), timeout=120).read()
