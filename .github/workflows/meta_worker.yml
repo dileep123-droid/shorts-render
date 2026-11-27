@@ -1,0 +1,26 @@
+name: meta-worker
+
+run-name: meta-worker ${{ inputs.job }}
+
+# Owner 27 Nov 2026: AI-lane long-lived text worker (one run per Meta text account 1-3, up to ~5 h); jobs arrive via the private R2 inbox.
+# This public log prints only states/counts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      job: { description: 'R2 key of the worker config json (s2work/ai_lane/workers/<name>.json)', required: true }
+
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+      CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+      CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -q playwright==1.48.0 boto3 && python -m playwright install --with-deps chromium > /dev/null
+      - run: python meta_worker.py "${{ inputs.job }}"
