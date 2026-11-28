@@ -229,8 +229,17 @@ with sync_playwright() as p:
             if not stable and n < 50 and not it.get("nudged") and time.time() - it["sent_t"] > 3 * 60:   # owner 28 Nov 18:13: a short follow-up makes Meta answer at once (spinner counts as busy, so no busy check)
                 try:
                     ed = pg.locator("[data-lexical-editor]:visible, [contenteditable='true']:visible, textarea:visible").first
-                    ed.click(); pg.keyboard.insert_text("Could you please reply")
-                    time.sleep(1.5); pg.keyboard.press("Enter"); it["nudged"] = time.time(); R[it["name"]]["nudged"] = True; log(it["name"], "NUDGED (no answer after 3 min)")
+                    ed.click(); time.sleep(0.8); pg.keyboard.insert_text("Could you please reply"); time.sleep(1.5)
+                    sent = False
+                    for _ in range(3):   # 28 Nov 19:20: Enter alone did not send -> click Meta's Send button, then check the text is in the chat
+                        try:
+                            if not pg.evaluate(JS_SEND): pg.keyboard.press("Enter")
+                        except Exception: pg.keyboard.press("Enter")
+                        time.sleep(4)
+                        try: sent = pg.evaluate("()=>[...document.querySelectorAll('div,span,p')].some(e=>e.children.length==0 && (e.innerText||'').trim()==='Could you please reply')")
+                        except Exception: sent = False
+                        if sent: break
+                    it["nudged"] = time.time(); R[it["name"]]["nudged"] = "sent" if sent else "typed, not confirmed"; log(it["name"], "NUDGED", "sent" if sent else "NOT CONFIRMED")
                 except Exception as e: log(it["name"], "nudge failed", type(e).__name__)
             if it.get("nudged") and not stable and time.time() - it["nudged"] < 8 * 60 and time.time() - it["sent_t"] > 60 * it.get("max_min", 15):
                 close(pg); continue   # give the re-asked chat up to 8 more minutes
