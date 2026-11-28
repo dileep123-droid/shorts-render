@@ -225,6 +225,15 @@ with sync_playwright() as p:
                 except Exception: more = 0
                 if more and it.get("clicks", 0) < 5: it["clicks"] = it.get("clicks", 0) + more; stable = False
             it["prev_len"] = n
+            # owner 28 Nov 17:20: Meta sometimes shows only the spinning logo and never answers -> ask once more IN THE SAME CHAT before giving up
+            if not stable and n < 50 and not busy and not b0 and not it.get("nudged") and time.time() - it["sent_t"] > 6 * 60:
+                try:
+                    ed = pg.locator("[data-lexical-editor]:visible, [contenteditable='true']:visible, textarea:visible").first
+                    ed.click(); pg.keyboard.insert_text("Please answer my request above now, following the attached file exactly. Plain text only.")
+                    time.sleep(1.5); pg.keyboard.press("Enter"); it["nudged"] = time.time(); R[it["name"]]["nudged"] = True; log(it["name"], "NUDGED (no answer after 6 min)")
+                except Exception as e: log(it["name"], "nudge failed", type(e).__name__)
+            if it.get("nudged") and not stable and time.time() - it["nudged"] < 8 * 60 and time.time() - it["sent_t"] > 60 * it.get("max_min", 15):
+                close(pg); continue   # give the re-asked chat up to 8 more minutes
             if stable: finish(it, pg, True, ans)
             elif time.time() - it["sent_t"] > 60 * it.get("max_min", 15): finish(it, pg, False, ans)
             close(pg)
