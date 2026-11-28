@@ -1,0 +1,35 @@
+name: tg-archive
+# Owner 28 Nov 2026: zip rarely-needed R2 folders (Meta clips...) into <= 1.9 GB parts and keep them in a private Telegram channel.
+# Manual run only. inputs.prefixes = R2 prefixes, one per line. delete=1 removes a prefix from R2 ONLY after all its parts are verified.
+on:
+  workflow_dispatch:
+    inputs:
+      prefixes: { description: 'R2 prefixes, one per line', required: true }
+      delete:   { description: '1 = delete from R2 after verified archive (owner OK needed)', required: false, default: '0' }
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: local Telegram Bot API server (2 GB uploads)
+        run: |
+          docker run -d --name tgapi -p 8081:8081 -e TELEGRAM_API_ID=${{ secrets.TG_API_ID }} -e TELEGRAM_API_HASH=${{ secrets.TG_API_HASH }} \
+            -e TELEGRAM_LOCAL=1 -v /tmp/tgdata:/var/lib/telegram-bot-api aiogram/telegram-bot-api:latest
+          for i in $(seq 1 30); do curl -s http://127.0.0.1:8081 >/dev/null && break; sleep 2; done
+          curl -s "http://127.0.0.1:8081/bot${{ secrets.TG_BOT_TOKEN }}/getMe" | head -c 200; echo
+      - name: archive
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          CF_R2_ENDPOINT: ${{ secrets.CF_R2_ENDPOINT }}
+          CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+          CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+          PREFIXES: ${{ inputs.prefixes }}
+          DELETE: ${{ inputs.delete }}
+        run: |
+          pip install -q boto3 requests
+          sudo chmod -R a+rX /tmp/tgdata || true
+          python tg_archive.py
