@@ -196,7 +196,7 @@ with sync_playwright() as p:
             if STOP["v"]: break
             pg = open_and_type(it)
             if pg: pages.append((it, pg))
-            time.sleep(random.uniform(2, 5))
+            time.sleep(random.uniform(1, 2))
         t = time.time(); resend = 0
         while time.time() - t < 60:
             waiting = [(it, pg) for it, pg in pages if pg.url.rstrip("/") == BASE]
@@ -251,7 +251,7 @@ with sync_playwright() as p:
                 if re.search(r"login|checkpoint|two_step|recover", pg.url, re.I): set_state(it, "LOGGED OUT / CHECKPOINT (url)", pg); close(pg); continue
                 tabs.append((it, pg))
             except Exception as e: log(it["name"], "collect retry", type(e).__name__); close(pg)
-        time.sleep(8)
+        time.sleep(6)
         first = {}
         for it, pg in tabs:
             try: first[it["name"]] = (pg.evaluate(JS_ANSWER, snip(it)), pg.evaluate(JS_BUSY))
@@ -261,7 +261,7 @@ with sync_playwright() as p:
             try: ans = pg.evaluate(JS_ANSWER, snip(it)); busy = pg.evaluate(JS_BUSY)
             except Exception: ans, busy = "", True
             a0, b0 = first[it["name"]]; n, prev = len(ans), it.get("prev_len", -1)
-            stable = n > 200 and n == len(a0) and n == prev and not busy and not b0   # two identical reads in two rounds
+            stable = n > 200 and n == len(a0) and not busy and not b0   # owner 28 Nov 21:00 faster: two identical reads 15 s apart (was: also the previous pass)
             if stable:
                 try: more = pg.evaluate(JS_MORE)
                 except Exception: more = 0
@@ -317,8 +317,8 @@ with sync_playwright() as p:
             for it in fresh:
                 if not it.get("chat") and R[it["name"]]["state"] == "started": set_state(it, "NOT STARTED (account stop: " + STOP["v"] + ")")
         if STOP["v"]: break
-        due = [it for it in ITEMS.values() if it.get("chat") and not it.get("finished") and time.time() - it["sent_t"] > 40]
-        if due and time.time() - last_collect > 30:
+        due = [it for it in ITEMS.values() if it.get("chat") and not it.get("finished") and time.time() - it["sent_t"] > 25]
+        if due and time.time() - last_collect > 15:
             last_collect = time.time()
             for i in range(0, len(due), TABS):
                 collect_group(due[i:i + TABS])
@@ -329,7 +329,7 @@ with sync_playwright() as p:
         if not claiming() and not open_: break
         if not open_ and time.time() - last_act > IDLE: log("idle", CFG.get("idle_min", 20), "min: exit"); break
         if time.time() - T0 > HARD: break
-        time.sleep(random.uniform(15, 25))
+        time.sleep(random.uniform(5, 10))
     for it in ITEMS.values():
         if not it.get("finished"):
             R[it["name"]]["state"] = "SENT, NOT COLLECTED" if it.get("chat") else "NOT STARTED (worker exit)"; save_item(it)
