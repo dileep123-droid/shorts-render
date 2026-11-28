@@ -86,6 +86,7 @@ JS_SOURCES = """()=>{const out=[], seen=new Set(); for (const a of document.quer
   out.push({domain:d, url:h, text:(a.innerText||'').trim().slice(0,120)}); } return out.slice(0,300);}"""
 JS_SEND = """()=>{for (const b of document.querySelectorAll('button,[role=button]')) {
   const l=(b.getAttribute('aria-label')||'').trim(); if (/^send( message)?$/i.test(l) && !b.disabled) { b.click(); return 1; } } return 0;}"""
+INLINE_MAX = 60000   # characters pasted straight into the message (bigger jobs still attach a file)
 STOP = {"v": ""}; R = {}; ITEMS = {}; CNT = {"claimed": 0, "sent": 0, "done": 0, "failed": 0}
 def snip(it): return re.sub(r"\s+", " ", it["prompt"])[:60]
 def save_item(it):
@@ -134,6 +135,13 @@ with sync_playwright() as p:
         except Exception: li = False
         if li: set_state(it, "LOGGED OUT (log-in button on page)", pg); close(pg); return None
         ensure_mode(pg, it)
+        if it.get("attach") and not it.get("inline_done"):   # owner 28 Nov 20:05 laptop test: attached file = NO answer, same text PASTED = answer in ~30 s
+            texts = []
+            for a_ in it["attach"]:
+                b_ = get(a_["key"])
+                if b_: texts.append(b_.decode("utf-8", "replace"))
+            if texts and sum(len(x) for x in texts) <= INLINE_MAX:
+                it["prompt"] = "\n\n".join(texts); it["attach"] = []; it["inline_done"] = True; R[it["name"]]["inline"] = len(it["prompt"])
         if it.get("attach"):   # owner 27 Nov 20:10 test: bulk material as attached files, short typed instruction
             paths = []
             for a in it["attach"]:
