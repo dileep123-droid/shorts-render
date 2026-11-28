@@ -141,6 +141,13 @@ with sync_playwright() as p:
         except Exception: li = False
         if li: set_state(it, "LOGGED OUT (log-in button on page)", pg); close(pg); return None
         ensure_mode(pg, it)
+        if it.get("attach") and it.get("method") == "link" and not it.get("inline_done"):   # owner 28 Nov 20:50: laptop test - Meta opened a private 2-h link and answered in 40 s
+            try:
+                urls = [S3.generate_presigned_url("get_object", Params={"Bucket": B, "Key": a_["key"], "ResponseContentType": "text/plain; charset=utf-8"}, ExpiresIn=7200) for a_ in it["attach"]]
+                it["prompt"] = ("TEXT ONLY. Do not create any image or video. Reply in plain text only.\nOpen and read " + ("this text file" if len(urls) == 1 else "these text files") +
+                                " completely: " + " ".join(urls) + "\nIt contains your full task, its rules and the material. Follow it exactly and reply in the format it asks for.")
+                it["attach"] = []; it["inline_done"] = True; R[it["name"]]["link"] = len(urls)
+            except Exception as e: log(it["name"], "link failed", type(e).__name__)
         if it.get("attach") and not it.get("inline_done") and it.get("method") != "attach":   # owner 28 Nov 20:05 laptop test: attached file = NO answer, same text PASTED = answer in ~30 s
             texts = []
             for a_ in it["attach"]:
