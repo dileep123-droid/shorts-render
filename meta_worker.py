@@ -86,6 +86,12 @@ JS_SOURCES = """()=>{const out=[], seen=new Set(); for (const a of document.quer
   out.push({domain:d, url:h, text:(a.innerText||'').trim().slice(0,120)}); } return out.slice(0,300);}"""
 JS_SEND = """()=>{for (const b of document.querySelectorAll('button,[role=button]')) {
   const l=(b.getAttribute('aria-label')||'').trim(); if (/^send( message)?$/i.test(l) && !b.disabled) { b.click(); return 1; } } return 0;}"""
+def split_parts(text, size=4000):   # paragraph-boundary chunks of about `size` characters
+    paras = text.split("\n\n"); out = [""]
+    for p_ in paras:
+        if out[-1] and len(out[-1]) + len(p_) > size: out.append("")
+        out[-1] += ("\n\n" if out[-1] else "") + p_
+    return [x for x in out if x.strip()]
 INLINE_MAX = 60000   # characters pasted straight into the message (bigger jobs still attach a file)
 STOP = {"v": ""}; R = {}; ITEMS = {}; CNT = {"claimed": 0, "sent": 0, "done": 0, "failed": 0}
 def snip(it): return re.sub(r"\s+", " ", it["prompt"])[:60]
@@ -135,13 +141,15 @@ with sync_playwright() as p:
         except Exception: li = False
         if li: set_state(it, "LOGGED OUT (log-in button on page)", pg); close(pg); return None
         ensure_mode(pg, it)
-        if it.get("attach") and not it.get("inline_done"):   # owner 28 Nov 20:05 laptop test: attached file = NO answer, same text PASTED = answer in ~30 s
+        if it.get("attach") and not it.get("inline_done") and it.get("method") != "attach":   # owner 28 Nov 20:05 laptop test: attached file = NO answer, same text PASTED = answer in ~30 s
             texts = []
             for a_ in it["attach"]:
                 b_ = get(a_["key"])
                 if b_: texts.append(b_.decode("utf-8", "replace"))
             if texts and sum(len(x) for x in texts) <= INLINE_MAX:
                 it["prompt"] = "\n\n".join(texts); it["attach"] = []; it["inline_done"] = True; R[it["name"]]["inline"] = len(it["prompt"])
+        if it.get("method") == "parts" and not it.get("parts"):
+            it["parts"] = split_parts(it["prompt"])
         if it.get("attach"):   # owner 27 Nov 20:10 test: bulk material as attached files, short typed instruction
             paths = []
             for a in it["attach"]:
@@ -153,6 +161,25 @@ with sync_playwright() as p:
                 R[it["name"]]["attached"] = [os.path.basename(x) for x in paths]
             except Exception as e:
                 R[it["name"]]["attach_error"] = type(e).__name__; log(it["name"], "attach failed", type(e).__name__)
+        if it.get("parts") and len(it["parts"]) > 1:   # owner 28 Nov 20:35: send in parts, Meta answers OK k/N, full answer after the last
+            P = it["parts"]; n = len(P)
+            for k, part in enumerate(P, 1):
+                head = (f"I will send one task in {n} parts. After each part reply only: OK {k}/{n}. After part {n}, do the whole task.\n\n" if k == 1 else "")
+                tail = (f"\n\nThat was part {n}/{n}, the last part. Now do the whole task exactly as instructed." if k == n else f"\n\n(part {k}/{n} - reply only OK {k}/{n})")
+                time.sleep(1.5); ed.click(); pg.keyboard.insert_text(head + part + tail); time.sleep(2)
+                try:
+                    if not pg.evaluate(JS_SEND): pg.keyboard.press("Enter")
+                except Exception: pg.keyboard.press("Enter")
+                if k < n:
+                    t0 = time.time()
+                    while time.time() - t0 < 90:
+                        time.sleep(4)
+                        try:
+                            if f"OK {k}/{n}" in pg.evaluate("()=>document.body.innerText"): break
+                        except Exception: pass
+                    ed = pg.locator("[data-lexical-editor]:visible, [contenteditable='true']:visible, textarea:visible").first
+            it["prompt"] = P[-1]; R[it["name"]]["parts"] = n
+            return pg
         time.sleep(1.5); ed.click(); pg.keyboard.insert_text(it["prompt"]); time.sleep(2.5); pg.keyboard.press("Enter")
         return pg
 
